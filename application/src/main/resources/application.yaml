@@ -1,0 +1,9 @@
+server:
+  port: 8080
+
+database:
+  driverClassName: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5432/postgres
+  username: postgres
+  password: test
+  maximumPoolSize: 6

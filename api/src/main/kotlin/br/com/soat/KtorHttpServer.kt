@@ -1,0 +1,80 @@
+package br.com.soat
+
+import br.com.soat.user.userRoutes
+import com.fasterxml.jackson.databind.DeserializationFeature
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.engine.EmbeddedServer
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import io.ktor.serialization.jackson.jackson
+import org.koin.core.module.Module
+import org.koin.ktor.plugin.Koin
+
+class KtorHttpServer(
+    private val applicationModule: Module,
+    private val port: Int = 8080,
+    private val gracePeriodMillis: Long = 1000,
+    private val timeoutMillis: Long = 2000,
+    private val wait: Boolean = true,
+) : HttpServer {
+
+    private var server: EmbeddedServer<*, *>? = null
+
+    init {
+        server = embeddedServer(Netty, port = port) {
+            configureKoin()
+            configureSerialization()
+            configureRouting()
+            configureLogging()
+        }
+
+        Runtime.getRuntime().addShutdownHook(Thread {
+            server?.stop(1000, 2000)
+        })
+    }
+
+    private fun Application.configureKoin() {
+        install(Koin) {
+            modules(applicationModule)
+        }
+    }
+
+    private fun Application.configureRouting() {
+        routing {
+            get("/health") {
+                call.respondText("OK")
+            }
+        }
+
+        userRoutes()
+    }
+
+    private fun Application.configureLogging() {
+        install(CallLogging)
+    }
+
+    private fun Application.configureSerialization() {
+        install(ContentNegotiation) {
+            jackson {
+                findAndRegisterModules()
+                configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            }
+        }
+    }
+
+    override fun start() {
+        server?.start(wait = wait)
+            ?: throw IllegalStateException("NettyApplicationEngine is not initialized")
+    }
+
+    override fun stop() {
+        server?.stop(gracePeriodMillis, timeoutMillis)
+        server = null
+    }
+}
