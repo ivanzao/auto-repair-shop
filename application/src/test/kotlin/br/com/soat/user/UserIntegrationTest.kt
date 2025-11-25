@@ -2,7 +2,7 @@ package br.com.soat.user
 
 import br.com.soat.IntegrationTest
 import br.com.soat.assertIsUUID
-import br.com.soat.br.com.soat.user.model.User
+import br.com.soat.user.model.User
 import br.com.soat.user.dto.CreateUserRequestDTO
 import br.com.soat.user.dto.UserResponseDTO
 import com.fasterxml.jackson.module.kotlin.readValue

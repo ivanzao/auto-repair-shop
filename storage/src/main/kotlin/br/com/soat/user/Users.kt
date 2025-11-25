@@ -1,6 +1,6 @@
 package br.com.soat.user
 
-import br.com.soat.br.com.soat.user.model.User
+import br.com.soat.user.model.User
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
@@ -11,6 +11,7 @@ object Users: Table() {
     val createdAt = datetime("created_at")
     val modifiedAt = datetime("modified_at")
     val version = integer("version").default(0)
+
     val name = varchar("name", 255)
     val email = varchar("email", 255)
     val contact = varchar("contact", 255)
@@ -23,7 +24,7 @@ object Users: Table() {
     }
 }
 
-fun ResultRow.toDomainUser(): User = User(
+fun ResultRow.toUser(): User = User(
     id = this[Users.id],
     createdAt = this[Users.createdAt].toJavaLocalDateTime(),
     modifiedAt = this[Users.modifiedAt].toJavaLocalDateTime(),

@@ -14,12 +14,19 @@ tasks {
         archiveVersion.set("")
         mergeServiceFiles()
     }
+
+    test {
+        useJUnitPlatform()
+    }
 }
 
 dependencies {
     implementation(project(":domain"))
     implementation(project(":api"))
     implementation(project(":storage"))
+    implementation(project(":worker"))
+
+    implementation(libs.kotlinx.coroutines.core)
 
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.core)
@@ -37,4 +44,6 @@ dependencies {
     testImplementation(libs.jackson.databind)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.jackson.datatype.jsr310)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -1,21 +1,21 @@
-package br.com.soat.br.com.soat.user
+package br.com.soat.user
 
-import br.com.soat.br.com.soat.user.model.CreateUserRequest
-import br.com.soat.br.com.soat.user.model.User
-import br.com.soat.br.com.soat.user.port.UserStoragePort
+import br.com.soat.user.model.CreateUserRequest
+import br.com.soat.user.model.User
+import java.util.UUID
 
 class UserUseCase(
-    private val storagePort: UserStoragePort
+    private val storagePort: UserRepository
 ) {
 
-    fun find(id: String) = storagePort.findByDocument(id)
+    fun find(id: UUID) = storagePort.findById(id)
 
     fun create(request: CreateUserRequest): User {
         storagePort.findByDocument(request.document)?.let {
             throw IllegalArgumentException("User already exists")
         }
 
-        return storagePort.save(
+        return storagePort.create(
             User(
                 name = request.name,
                 email = request.email,

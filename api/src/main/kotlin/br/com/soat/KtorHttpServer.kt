@@ -1,6 +1,10 @@
 package br.com.soat
 
+import br.com.soat.customer.customerRoutes
+import br.com.soat.supply.supplyRoutes
 import br.com.soat.user.userRoutes
+import br.com.soat.vehicle.vehicleRoutes
+import br.com.soat.order.orderRoutes
 import com.fasterxml.jackson.databind.DeserializationFeature
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -13,11 +17,10 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.serialization.jackson.jackson
-import org.koin.core.module.Module
-import org.koin.ktor.plugin.Koin
+import org.koin.core.Koin
 
 class KtorHttpServer(
-    private val applicationModule: Module,
+    private val koin: Koin,
     private val port: Int = 8080,
     private val gracePeriodMillis: Long = 1000,
     private val timeoutMillis: Long = 2000,
@@ -28,9 +31,8 @@ class KtorHttpServer(
 
     init {
         server = embeddedServer(Netty, port = port) {
-            configureKoin()
             configureSerialization()
-            configureRouting()
+            configureRouting(koin)
             configureLogging()
         }
 
@@ -39,20 +41,19 @@ class KtorHttpServer(
         })
     }
 
-    private fun Application.configureKoin() {
-        install(Koin) {
-            modules(applicationModule)
-        }
-    }
 
-    private fun Application.configureRouting() {
+    private fun Application.configureRouting(koin: Koin) {
         routing {
             get("/health") {
                 call.respondText("OK")
             }
         }
 
-        userRoutes()
+        userRoutes(koin)
+        supplyRoutes(koin)
+        vehicleRoutes(koin)
+        customerRoutes(koin)
+        orderRoutes(koin)
     }
 
     private fun Application.configureLogging() {
@@ -63,6 +64,8 @@ class KtorHttpServer(
         install(ContentNegotiation) {
             jackson {
                 findAndRegisterModules()
+//                registerKotlinModule()
+//                registerModule(JavaTimeModule())
                 configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             }
         }

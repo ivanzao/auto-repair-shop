@@ -1,6 +1,6 @@
 package br.com.soat.user.dto
 
-import br.com.soat.br.com.soat.user.model.User
+import br.com.soat.user.model.User
 
 data class UserResponseDTO(
     val id: String,

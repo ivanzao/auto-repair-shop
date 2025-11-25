@@ -1,11 +1,11 @@
 package br.com.soat.order.dto
 
-import br.com.soat.br.com.soat.customer.Customer
-import br.com.soat.br.com.soat.order.model.Order
-import br.com.soat.br.com.soat.order.model.Order.Status
-import br.com.soat.br.com.soat.order.model.Service
-import br.com.soat.br.com.soat.user.model.User
-import br.com.soat.br.com.soat.vehicle.Vehicle
+import br.com.soat.customer.model.Customer
+import br.com.soat.order.model.Order
+import br.com.soat.order.model.Order.Status
+import br.com.soat.service.model.Service
+import br.com.soat.user.model.User
+import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
 import java.util.UUID
 

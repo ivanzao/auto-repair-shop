@@ -1,7 +1,6 @@
 package br.com.soat.order.dto
 
-import br.com.soat.br.com.soat.order.model.CreateOrderRequest
-import br.com.soat.br.com.soat.user.model.User
+import br.com.soat.order.model.request.CreateOrderRequest
 import java.util.UUID
 
 data class CreateOrderRequestDTO(
@@ -11,6 +10,8 @@ data class CreateOrderRequestDTO(
     val description: String,
     val serviceIds: List<UUID>,
     val technician: String? = null,
+
+    val attendantId: UUID,
 ) {
     fun toModel() = CreateOrderRequest(
         customerId = customerId,
@@ -18,12 +19,6 @@ data class CreateOrderRequestDTO(
         description = description,
         serviceIds = serviceIds,
         technician = technician,
-        attendant = User(
-            name = "Kenny Savage",
-            document = "affert",
-            email = "olive.lowe@example.com",
-            contact = "semper",
-            role = User.Role.ADMIN
-        )
+        attendantId = attendantId
     )
 }

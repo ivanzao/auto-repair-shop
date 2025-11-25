@@ -1,11 +1,18 @@
 package br.com.soat
 
+import EventDispatcherWorker
 import br.com.soat.config.Config
+import br.com.soat.worker.command.CommandWorker
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import java.net.ServerSocket
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.koin.core.Koin
+import org.koin.core.KoinApplication
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 import org.testcontainers.containers.PostgreSQLContainer
 
 abstract class IntegrationTest {
@@ -13,9 +20,11 @@ abstract class IntegrationTest {
     protected var serverPort = ServerSocket(0).use { it.localPort }
     protected var server: KtorHttpServer? = null
     protected val postgresContainer = PostgreSQLContainer("postgres:18.1")
+    protected var koinApplication: KoinApplication? = null
 
     protected val mapper = jacksonObjectMapper()
         .registerKotlinModule()
+        .registerModule(JavaTimeModule())
 
     @BeforeEach
     fun setup() {
@@ -33,8 +42,15 @@ abstract class IntegrationTest {
             )
         )
 
+        koinApplication = startKoin {
+            modules(applicationModule)
+        }
+
+        koinApplication!!.koin.get<CommandWorker>().start()
+        koinApplication!!.koin.get<EventDispatcherWorker>().start()
+
         server = KtorHttpServer(
-            applicationModule = applicationModule,
+            koin = koinApplication!!.koin,
             port = serverPort,
             wait = false
         )
@@ -44,7 +60,12 @@ abstract class IntegrationTest {
 
     @AfterEach
     fun tearDown() {
+        koinApplication!!.koin.get<EventDispatcherWorker>().stop()
+        koinApplication!!.koin.get<CommandWorker>().stop()
+
         server?.stop()
         postgresContainer.stop()
+
+        stopKoin()
     }
 }

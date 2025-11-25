@@ -1,4 +1,4 @@
-package br.com.soat.br.com.soat.user.model
+package br.com.soat.user.model
 
 data class CreateUserRequest(
     val name: String,
