@@ -9,12 +9,15 @@ data class CreateUserRequestDTO(
     val email: String,
     val contact: String,
     val role: User.Role,
+    val password: String,
 ) {
+
     fun toModel() = CreateUserRequest(
         name = name,
         document = document,
         email = email,
         contact = contact,
-        role = role
+        role = role,
+        password = password
     )
 }

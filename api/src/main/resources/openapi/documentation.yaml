@@ -1,0 +1,961 @@
+openapi: "3.1.0"
+info:
+  title: "auto_repair_shop API"
+  description: "auto_repair_shop API"
+  version: "1.0.0"
+servers:
+  - url: "https://auto_repair_shop"
+paths:
+  /orders:
+    post:
+      tags:
+        - Order
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequestDTO"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponseDTO"
+  /orders/{id}:
+    get:
+      tags:
+        - Order
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+  /orders/{id}/finish-diagnosis:
+    post:
+      tags:
+        - Order
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishOrderDiagnosisRequestDTO"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponseDTO"
+  /orders/{id}/start-diagnosis:
+    post:
+      tags:
+        - Order
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartOrderDiagnosisRequestDTO"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderResponseDTO"
+  /health:
+    get:
+      tags:
+        - Health
+      description: ""
+      responses:
+        "200":
+          description: "OK"
+          content:
+            text/plain:
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "OK"
+  /users:
+    get:
+      tags:
+        - User
+      description: ""
+      responses:
+        "200":
+          description: "OK"
+          content:
+            text/plain:
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Hello from Koin"
+    post:
+      tags:
+        - User
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequestDTO"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserResponseDTO"
+  /supplies:
+    get:
+      tags:
+        - Supply
+      description: ""
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/SupplyResponseDTO"
+    post:
+      tags:
+        - Supply
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplyRequestDTO"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SupplyResponseDTO"
+  /supplies/{id}:
+    delete:
+      tags:
+        - Supply
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "204":
+          description: "No Content"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+    get:
+      tags:
+        - Supply
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SupplyResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+    put:
+      tags:
+        - Supply
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplyRequestDTO"
+        required: true
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SupplyResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+  /vehicles:
+    get:
+      tags:
+        - Vehicle
+      description: ""
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/VehicleResponseDTO"
+    post:
+      tags:
+        - Vehicle
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVehicleRequestDTO"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/VehicleResponseDTO"
+  /vehicles/{id}:
+    delete:
+      tags:
+        - Vehicle
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "204":
+          description: "No Content"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+    get:
+      tags:
+        - Vehicle
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/VehicleResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+    put:
+      tags:
+        - Vehicle
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVehicleRequestDTO"
+        required: true
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/VehicleResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+  /customers:
+    get:
+      tags:
+        - Customer
+      description: ""
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/CustomerResponseDTO"
+    post:
+      tags:
+        - Customer
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequestDTO"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CustomerResponseDTO"
+  /customers/{id}:
+    delete:
+      tags:
+        - Customer
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "204":
+          description: "No Content"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+    get:
+      tags:
+        - Customer
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CustomerResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+    put:
+      tags:
+        - Customer
+      description: ""
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequestDTO"
+        required: true
+      responses:
+        "400":
+          description: "Bad Request"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Invalid ID format"
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CustomerResponseDTO"
+        "404":
+          description: "Not Found"
+          content:
+            '*/*':
+              schema:
+                type: "object"
+components:
+  schemas:
+    CreateOrderRequestDTO:
+      type: "object"
+      properties:
+        customerId:
+          type: "string"
+          format: "uuid"
+        vehicleId:
+          type: "string"
+          format: "uuid"
+        description:
+          type: "string"
+        technician:
+          type: "string"
+          nullable: true
+        attendantId:
+          type: "string"
+          format: "uuid"
+      required:
+        - "customerId"
+        - "vehicleId"
+        - "description"
+        - "attendantId"
+    Customer:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        modifiedAt:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+          format: "int32"
+          default: "0"
+        name:
+          type: "string"
+        document:
+          type: "string"
+        email:
+          type: "string"
+        contact:
+          type: "string"
+      required:
+        - "id"
+        - "createdAt"
+        - "modifiedAt"
+        - "version"
+        - "name"
+        - "document"
+        - "email"
+        - "contact"
+    Vehicle:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        modifiedAt:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+          format: "int32"
+          default: "0"
+        clientId:
+          type: "string"
+          format: "uuid"
+        plate:
+          type: "string"
+        brand:
+          type: "string"
+        model:
+          type: "string"
+        year:
+          type: "integer"
+          format: "int32"
+      required:
+        - "id"
+        - "createdAt"
+        - "modifiedAt"
+        - "version"
+        - "clientId"
+        - "plate"
+        - "brand"
+        - "model"
+        - "year"
+    User:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        modifiedAt:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+          format: "int32"
+          default: "0"
+        name:
+          type: "string"
+        document:
+          type: "string"
+        email:
+          type: "string"
+        contact:
+          type: "string"
+        role:
+          type: "string"
+          enum:
+            - "ADMIN"
+            - "ATTENDANT"
+      required:
+        - "id"
+        - "createdAt"
+        - "modifiedAt"
+        - "version"
+        - "name"
+        - "document"
+        - "email"
+        - "contact"
+        - "role"
+    SupplyRequest:
+      type: "object"
+      properties:
+        supplyId:
+          type: "string"
+          format: "uuid"
+        quantity:
+          type: "integer"
+          format: "int32"
+      required:
+        - "supplyId"
+        - "quantity"
+    BigDecimal:
+      type: "object"
+      properties: { }
+    Service:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        modifiedAt:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+          format: "int32"
+          default: "0"
+        requiredSupplies:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SupplyRequest"
+        name:
+          type: "string"
+        description:
+          type: "string"
+          nullable: true
+        price:
+          $ref: "#/components/schemas/BigDecimal"
+      required:
+        - "id"
+        - "createdAt"
+        - "modifiedAt"
+        - "version"
+        - "requiredSupplies"
+        - "name"
+        - "price"
+    OrderResponseDTO:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        status:
+          type: "string"
+          enum:
+            - "RECEIVED"
+            - "IN_DIAGNOSIS"
+            - "WAITING_APPROVAL"
+            - "APPROVED"
+            - "REJECTED"
+            - "IN_PROGRESS"
+            - "CANCELED"
+            - "COMPLETED"
+        customer:
+          $ref: "#/components/schemas/Customer"
+        vehicle:
+          $ref: "#/components/schemas/Vehicle"
+        attendant:
+          $ref: "#/components/schemas/User"
+        description:
+          type: "string"
+        services:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Service"
+        technician:
+          type: "string"
+          nullable: true
+      required:
+        - "id"
+        - "createdAt"
+        - "status"
+        - "customer"
+        - "vehicle"
+        - "attendant"
+        - "description"
+        - "services"
+    SupplyRequestDTO:
+      type: "object"
+      properties:
+        supplyId:
+          type: "string"
+          format: "uuid"
+        quantity:
+          type: "integer"
+          format: "int32"
+      required:
+        - "supplyId"
+        - "quantity"
+    FinishOrderDiagnosisRequestDTO:
+      type: "object"
+      properties:
+        servicesIds:
+          type: "array"
+          items:
+            type: "string"
+            format: "uuid"
+        extraSuppliesRequests:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SupplyRequestDTO"
+      required:
+        - "servicesIds"
+        - "extraSuppliesRequests"
+    StartOrderDiagnosisRequestDTO:
+      type: "object"
+      properties:
+        technician:
+          type: "string"
+      required:
+        - "technician"
+    CreateUserRequestDTO:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        document:
+          type: "string"
+        email:
+          type: "string"
+        contact:
+          type: "string"
+        role:
+          type: "string"
+          enum:
+            - "ADMIN"
+            - "ATTENDANT"
+      required:
+        - "name"
+        - "document"
+        - "email"
+        - "contact"
+        - "role"
+    UserResponseDTO:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        name:
+          type: "string"
+        document:
+          type: "string"
+        email:
+          type: "string"
+        contact:
+          type: "string"
+    SupplyResponseDTO:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        name:
+          type: "string"
+        description:
+          type: "string"
+          nullable: true
+        quantity:
+          type: "integer"
+          format: "int32"
+        price:
+          $ref: "#/components/schemas/BigDecimal"
+      required:
+        - "id"
+        - "name"
+        - "quantity"
+        - "price"
+    CreateSupplyRequestDTO:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        description:
+          type: "string"
+          nullable: true
+        quantity:
+          type: "integer"
+          format: "int32"
+        price:
+          $ref: "#/components/schemas/BigDecimal"
+      required:
+        - "name"
+        - "quantity"
+        - "price"
+    VehicleResponseDTO:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        plate:
+          type: "string"
+        brand:
+          type: "string"
+        model:
+          type: "string"
+        year:
+          type: "integer"
+          format: "int32"
+        clientId:
+          type: "string"
+      required:
+        - "id"
+        - "plate"
+        - "brand"
+        - "model"
+        - "year"
+        - "clientId"
+    CreateVehicleRequestDTO:
+      type: "object"
+      properties:
+        clientId:
+          type: "string"
+          format: "uuid"
+        plate:
+          type: "string"
+          brand:
+          type: "string"
+        model:
+          type: "string"
+        year:
+          type: "integer"
+          format: "int32"
+      required:
+        - "clientId"
+        - "plate"
+        - "brand"
+        - "model"
+        - "year"
+    CustomerResponseDTO:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        name:
+          type: "string"
+        document:
+          type: "string"
+        email:
+          type: "string"
+        contact:
+          type: "string"
+      required:
+        - "id"
+        - "name"
+        - "document"
+        - "email"
+        - "contact"
+    CreateCustomerRequestDTO:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        document:
+          type: "string"
+        email:
+          type: "string"
+        contact:
+          type: "string"
+      required:
+        - "name"
+        - "document"
+        - "email"
+        - "contact"

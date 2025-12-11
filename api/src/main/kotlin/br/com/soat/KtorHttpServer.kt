@@ -1,11 +1,14 @@
 package br.com.soat
 
+import br.com.soat.auth.authenticationRoutes
 import br.com.soat.customer.customerRoutes
+import br.com.soat.order.orderRoutes
+import br.com.soat.security.configureAuthentication
 import br.com.soat.supply.supplyRoutes
 import br.com.soat.user.userRoutes
 import br.com.soat.vehicle.vehicleRoutes
-import br.com.soat.order.orderRoutes
 import com.fasterxml.jackson.databind.DeserializationFeature
+import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.EmbeddedServer
@@ -16,7 +19,6 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import io.ktor.serialization.jackson.jackson
 import org.koin.core.Koin
 
 class KtorHttpServer(
@@ -31,8 +33,9 @@ class KtorHttpServer(
 
     init {
         server = embeddedServer(Netty, port = port) {
-            configureSerialization()
+            configureAuthentication(koin)
             configureRouting(koin)
+            configureSerialization()
             configureLogging()
         }
 
@@ -54,6 +57,7 @@ class KtorHttpServer(
         vehicleRoutes(koin)
         customerRoutes(koin)
         orderRoutes(koin)
+        authenticationRoutes(koin)
     }
 
     private fun Application.configureLogging() {

@@ -3,9 +3,12 @@ package br.com.soat.vehicle
 import br.com.soat.vehicle.model.Vehicle
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 
 class VehiclePostgresRepository : VehicleRepository {
 
@@ -30,6 +33,30 @@ class VehiclePostgresRepository : VehicleRepository {
             it[year] = vehicle.year
         }.resultedValues?.singleOrNull()
             ?.toVehicle()
-            ?: throw IllegalStateException("An error occurred while saving User")
+            ?: throw IllegalStateException("An error occurred while saving Vehicle")
+    }
+
+    override fun findAll(): List<Vehicle> = transaction {
+        Vehicles.selectAll().map { it.toVehicle() }
+    }
+
+    override fun update(vehicle: Vehicle): Vehicle = transaction {
+        Vehicles.update({ Vehicles.id eq vehicle.id }) {
+            it[modifiedAt] = vehicle.modifiedAt.toKotlinLocalDateTime()
+            it[version] = vehicle.version
+            it[client] = vehicle.clientId
+            it[plate] = vehicle.plate
+            it[brand] = vehicle.brand
+            it[model] = vehicle.model
+            it[year] = vehicle.year
+        }
+        
+        findById(vehicle.id) ?: throw IllegalStateException("Vehicle not found after update")
+    }
+
+    override fun delete(id: UUID) {
+        transaction {
+            Vehicles.deleteWhere { Vehicles.id eq id }
+        }
     }
 }

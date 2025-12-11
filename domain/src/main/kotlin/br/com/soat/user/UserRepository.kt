@@ -5,6 +5,7 @@ import java.util.UUID
 
 interface UserRepository {
     fun findById(id: UUID): User?
+    fun findByEmail(email: String): User?
     fun findByDocument(document: String): User?
     fun findAll(): List<User>
     fun create(user: User): User

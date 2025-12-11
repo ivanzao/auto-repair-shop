@@ -33,7 +33,7 @@ data class Order(
 
     fun addServices(services: List<Service>) = copy(services = this.services + services)
 
-    fun requiredSupplyRequests(): List<SupplyRequest> {
+    fun getRequiredSupplyRequests(): List<SupplyRequest> {
         val serviceSupplies = services.flatMap { it.requiredSupplies }
         return (serviceSupplies + extraSupplies).groupingBy { it.supplyId }
             .fold(0) { acc, supplyRequest -> acc + supplyRequest.quantity }

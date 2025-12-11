@@ -4,8 +4,9 @@ plugins {
 
 rootProject.name = "auto-repair-shop"
 
-include("application")
+include("main")
 include("domain")
 include("api")
 include("storage")
 include("worker")
+include("jwt")

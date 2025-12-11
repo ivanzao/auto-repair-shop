@@ -8,7 +8,6 @@ data class CreateOrderRequestDTO(
     val vehicleId: UUID,
 
     val description: String,
-    val serviceIds: List<UUID>,
     val technician: String? = null,
 
     val attendantId: UUID,
@@ -17,7 +16,6 @@ data class CreateOrderRequestDTO(
         customerId = customerId,
         vehicleId = vehicleId,
         description = description,
-        serviceIds = serviceIds,
         technician = technician,
         attendantId = attendantId
     )

@@ -9,6 +9,5 @@ data class CreateOrderRequest(
     val vehicleId: UUID,
 
     val description: String,
-    val serviceIds: List<UUID>,
     val technician: String? = null,
 )

@@ -1,7 +1,7 @@
 package br.com.soat.order
 
 import br.com.soat.customer.CustomerRepository
-import br.com.soat.event.order.OrderDiagnoseFinishedEvent
+import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
 import br.com.soat.order.command.SendQuoteToClientCommand
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.request.CreateOrderRequest
@@ -11,7 +11,7 @@ import br.com.soat.service.ServiceRepository
 import br.com.soat.service.model.Service
 import br.com.soat.shared.repository.CommandRepository
 import br.com.soat.shared.repository.EventRepository
-import br.com.soat.shared.repository.RepositoryTransactionManager
+import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.user.UserRepository
 import br.com.soat.vehicle.VehicleRepository
 import java.util.UUID
@@ -24,7 +24,7 @@ class OrderUseCase(
     private val serviceRepository: ServiceRepository,
     private val eventRepository: EventRepository,
     private val commandRepository: CommandRepository,
-    private val tx: RepositoryTransactionManager
+    private val tx: RepositoryTransactionHandler
 ) {
 
     fun create(request: CreateOrderRequest): Order {

@@ -1,9 +1,9 @@
 package br.com.soat.supply.service
 
-import br.com.soat.event.supply.OrderSuppliesReservedEvent
+import br.com.soat.supply.model.event.OrderSuppliesReservedEvent
 import br.com.soat.order.OrderRepository
 import br.com.soat.shared.repository.EventRepository
-import br.com.soat.shared.repository.RepositoryTransactionManager
+import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.model.Supply
 import br.com.soat.supply.model.SupplyRequest
@@ -13,14 +13,14 @@ class SupplyStockService(
     private val orderRepository: OrderRepository,
     private val supplyRepository: SupplyRepository,
     private val eventRepository: EventRepository,
-    private val tx: RepositoryTransactionManager
+    private val tx: RepositoryTransactionHandler
 ) {
 
     fun reserveSuppliesForOrder(orderId: UUID) {
         val order = orderRepository.findById(orderId)
             ?: throw IllegalArgumentException("Order not found $orderId")
 
-        val supplyRequests = order.requiredSupplyRequests()
+        val supplyRequests = order.getRequiredSupplyRequests()
         val supplies = supplyRepository.findAllByIds(supplyRequests.map { it.supplyId })
 
         validateRequestedSuppliesExists(supplies, supplyRequests)

@@ -10,6 +10,7 @@ data class Service(
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val modifiedAt: LocalDateTime = LocalDateTime.now(),
     val version: Int = 0,
+
     val requiredSupplies: List<SupplyRequest> = emptyList(),
     val name: String,
     val description: String?,

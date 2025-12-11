@@ -1,11 +1,13 @@
 package br.com.soat.user
 
+import br.com.soat.security.HashService
 import br.com.soat.user.model.CreateUserRequest
 import br.com.soat.user.model.User
 import java.util.UUID
 
 class UserUseCase(
-    private val storagePort: UserRepository
+    private val storagePort: UserRepository,
+    private val hashService: HashService,
 ) {
 
     fun find(id: UUID) = storagePort.findById(id)
@@ -21,7 +23,8 @@ class UserUseCase(
                 email = request.email,
                 document = request.document,
                 contact = request.contact,
-                role = request.role
+                role = request.role,
+                hashedPassword = hashService.hash(request.password)
             )
         )
     }

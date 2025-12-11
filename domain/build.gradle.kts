@@ -1,5 +1,5 @@
 dependencies {
-    // Logging
     implementation(libs.slf4j.api)
+    implementation(libs.bouncycastle.provider)
     runtimeOnly(libs.logback.classic)
 }

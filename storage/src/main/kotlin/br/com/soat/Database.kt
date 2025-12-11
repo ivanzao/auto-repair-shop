@@ -18,7 +18,6 @@ fun connectToDatabase(params: DatabaseConnectionParams) {
 
     Database.connect(datasource)
 
-
     Flyway.configure()
         .dataSource(datasource)
         .locations("classpath:db/migration")

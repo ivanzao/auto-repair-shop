@@ -2,8 +2,10 @@ package br.com.soat.supply.dto
 
 import br.com.soat.supply.model.Supply
 import java.math.BigDecimal
+import java.util.UUID
 
 data class SupplyResponseDTO(
+    val id: UUID,
     val name: String,
     val description: String?,
     val quantity: Int,
@@ -11,6 +13,7 @@ data class SupplyResponseDTO(
 ) {
     companion object {
         fun from(supply: Supply) = SupplyResponseDTO(
+            id = supply.id,
             name = supply.name,
             description = supply.description,
             quantity = supply.quantityInStock,

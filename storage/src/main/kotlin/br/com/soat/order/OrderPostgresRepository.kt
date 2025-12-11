@@ -2,6 +2,7 @@ package br.com.soat.order
 
 import br.com.soat.customer.Customers
 import br.com.soat.order.model.Order
+import br.com.soat.service.ServiceRepository
 import br.com.soat.service.ServiceSupplies
 import br.com.soat.service.Services
 import br.com.soat.service.toService
@@ -20,7 +21,9 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
-class OrderPostgresRepository : OrderRepository {
+class OrderPostgresRepository(
+    private val serviceRepository: ServiceRepository
+) : OrderRepository {
 
     override fun findById(id: UUID): Order? = transaction {
         val orderRow = Orders
@@ -37,21 +40,7 @@ class OrderPostgresRepository : OrderRepository {
             .where { OrderServices.orderId eq id }
             .toList()
 
-        val serviceIds = servicesRows.map { it[Services.id] }
-
-        val serviceSupplies = ServiceSupplies
-            .selectAll()
-            .where { ServiceSupplies.serviceId inList serviceIds }
-            .map { 
-                it[ServiceSupplies.serviceId] to SupplyRequest(it[ServiceSupplies.supplyId], it[ServiceSupplies.quantity]) 
-            }
-            .groupBy({ it.first }, { it.second })
-
-        val services = servicesRows.map { row ->
-            val serviceId = row[Services.id]
-            row.toService(serviceSupplies[serviceId] ?: emptyList())
-        }
-
+        val services = serviceRepository.findAllByIds(servicesRows.map { it[Services.id] })
         val supplies = OrderSupplies
             .selectAll()
             .where { OrderSupplies.orderId eq id }

@@ -19,4 +19,34 @@ class VehicleUseCase(
             )
         )
     }
+
+    fun findById(id: java.util.UUID): Vehicle? {
+        return storagePort.findById(id)
+    }
+
+    fun findAll(): List<Vehicle> {
+        return storagePort.findAll()
+    }
+
+    fun update(id: java.util.UUID, request: CreateVehicleRequest): Vehicle? {
+        val existingVehicle = storagePort.findById(id) ?: return null
+        
+        val updatedVehicle = existingVehicle.copy(
+            clientId = request.clientId,
+            plate = request.plate,
+            brand = request.brand,
+            model = request.model,
+            year = request.year,
+            modifiedAt = java.time.LocalDateTime.now(),
+            version = existingVehicle.version + 1
+        )
+        
+        return storagePort.update(updatedVehicle)
+    }
+
+    fun delete(id: java.util.UUID): Boolean {
+        val existingVehicle = storagePort.findById(id) ?: return false
+        storagePort.delete(existingVehicle.id)
+        return true
+    }
 }

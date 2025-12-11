@@ -13,6 +13,7 @@ object Users: Table() {
     val version = integer("version").default(0)
 
     val name = varchar("name", 255)
+    val hashedPassword = varchar("hashed_password", 255)
     val email = varchar("email", 255)
     val contact = varchar("contact", 255)
     val document = varchar("document", 255)
@@ -30,6 +31,7 @@ fun ResultRow.toUser(): User = User(
     modifiedAt = this[Users.modifiedAt].toJavaLocalDateTime(),
     version = this[Users.version],
     name = this[Users.name],
+    hashedPassword = this[Users.hashedPassword],
     document = this[Users.document],
     email = this[Users.email],
     contact = this[Users.contact],

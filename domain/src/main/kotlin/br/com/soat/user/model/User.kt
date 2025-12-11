@@ -12,6 +12,7 @@ data class User(
     val version: Int = 0,
 
     val name: String,
+    val hashedPassword: String,
     val document: String,
     val email: String,
     val contact: String,

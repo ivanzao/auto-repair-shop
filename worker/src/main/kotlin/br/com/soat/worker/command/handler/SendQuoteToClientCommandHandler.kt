@@ -1,8 +1,8 @@
 package br.com.soat.worker.command.handler
 
+import br.com.soat.command.CommandHandler
 import br.com.soat.order.command.SendQuoteToClientCommand
 import br.com.soat.shared.Command
-import br.com.soat.worker.command.CommandHandler
 import kotlin.reflect.KClass
 import org.slf4j.LoggerFactory
 

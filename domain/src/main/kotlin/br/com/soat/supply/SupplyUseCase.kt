@@ -2,13 +2,17 @@ package br.com.soat.supply
 
 import br.com.soat.supply.model.request.CreateSupplyRequest
 import br.com.soat.supply.model.Supply
+import java.util.UUID
 
 class SupplyUseCase(
     private val storagePort: SupplyRepository
 ) {
 
-    fun create(request: CreateSupplyRequest): Supply {
-        return storagePort.create(
+    fun findById(id: UUID) = storagePort.findById(id)
+    fun findAll() = storagePort.findAll()
+
+    fun create(request: CreateSupplyRequest) =
+        storagePort.create(
             Supply(
                 name = request.name,
                 description = request.description,
@@ -16,5 +20,20 @@ class SupplyUseCase(
                 price = request.price,
             )
         )
+
+    fun update(id: UUID, request: CreateSupplyRequest): Supply {
+        val existingSupply = storagePort.findById(id) ?:
+            throw IllegalStateException("Trying to update a non-existing supply $id")
+
+        return storagePort.update(
+            existingSupply.copy(
+                name = request.name,
+                description = request.description,
+                quantityInStock = request.quantity,
+                price = request.price
+            )
+        )
     }
+
+    fun delete(id: UUID) = storagePort.delete(id)
 }
