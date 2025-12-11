@@ -1,7 +1,7 @@
 package br.com.soat.worker.command
 
 import br.com.soat.command.CommandProcessor
-import br.com.soat.shared.repository.CommandRepository
+import br.com.soat.command.repository.CommandRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel

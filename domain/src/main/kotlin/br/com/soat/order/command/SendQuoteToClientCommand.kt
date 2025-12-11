@@ -1,7 +1,7 @@
 package br.com.soat.order.command
 
-import br.com.soat.shared.Command
-import br.com.soat.shared.CommandStatus
+import br.com.soat.command.model.Command
+import br.com.soat.command.model.CommandStatus
 import java.time.LocalDateTime
 import java.util.UUID
 

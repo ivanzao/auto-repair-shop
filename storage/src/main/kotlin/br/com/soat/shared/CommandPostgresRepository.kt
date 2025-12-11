@@ -1,6 +1,8 @@
 package br.com.soat.shared
 
-import br.com.soat.shared.repository.CommandRepository
+import br.com.soat.command.model.Command
+import br.com.soat.command.model.CommandStatus
+import br.com.soat.command.repository.CommandRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.time.LocalDateTime.now
 import java.util.UUID

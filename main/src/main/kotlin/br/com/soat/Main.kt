@@ -17,8 +17,8 @@ import br.com.soat.service.ServicePostgresRepository
 import br.com.soat.service.ServiceRepository
 import br.com.soat.shared.CommandPostgresRepository
 import br.com.soat.shared.EventPostgresRepository
-import br.com.soat.shared.repository.CommandRepository
-import br.com.soat.shared.repository.EventRepository
+import br.com.soat.command.repository.CommandRepository
+import br.com.soat.event.repository.EventRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.supply.SupplyPostgresRepository
 import br.com.soat.supply.SupplyRepository

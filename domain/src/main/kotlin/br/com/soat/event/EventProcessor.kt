@@ -1,8 +1,8 @@
 package br.com.soat.event
 
-import br.com.soat.shared.DomainEvent
-import br.com.soat.shared.EventStatus
-import br.com.soat.shared.repository.EventRepository
+import br.com.soat.event.model.DomainEvent
+import br.com.soat.event.model.EventStatus
+import br.com.soat.event.repository.EventRepository
 import org.slf4j.LoggerFactory
 
 class EventProcessor(

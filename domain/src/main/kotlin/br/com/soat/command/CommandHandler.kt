@@ -1,6 +1,6 @@
 package br.com.soat.command
 
-import br.com.soat.shared.Command
+import br.com.soat.command.model.Command
 import kotlin.reflect.KClass
 
 interface CommandHandler {

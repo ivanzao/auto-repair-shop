@@ -1,4 +1,4 @@
-package br.com.soat.shared
+package br.com.soat.command.model
 
 enum class CommandStatus {
     PENDING,

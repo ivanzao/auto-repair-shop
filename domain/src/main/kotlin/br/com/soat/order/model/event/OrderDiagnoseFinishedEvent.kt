@@ -1,6 +1,6 @@
 package br.com.soat.order.model.event
 
-import br.com.soat.shared.DomainEvent
+import br.com.soat.event.model.DomainEvent
 import java.time.LocalDateTime
 import java.util.UUID
 

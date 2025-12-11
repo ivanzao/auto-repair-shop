@@ -1,7 +1,7 @@
-package br.com.soat.shared.repository
+package br.com.soat.event.repository
 
-import br.com.soat.shared.DomainEvent
-import br.com.soat.shared.EventStatus
+import br.com.soat.event.model.DomainEvent
+import br.com.soat.event.model.EventStatus
 import java.util.UUID
 
 interface EventRepository {

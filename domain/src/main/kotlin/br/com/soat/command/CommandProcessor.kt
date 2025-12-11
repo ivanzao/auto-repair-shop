@@ -1,8 +1,8 @@
 package br.com.soat.command
 
-import br.com.soat.shared.Command
-import br.com.soat.shared.CommandStatus
-import br.com.soat.shared.repository.CommandRepository
+import br.com.soat.command.model.Command
+import br.com.soat.command.model.CommandStatus
+import br.com.soat.command.repository.CommandRepository
 import org.slf4j.LoggerFactory
 
 class CommandProcessor(

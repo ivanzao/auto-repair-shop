@@ -2,7 +2,7 @@ package br.com.soat.supply.service
 
 import br.com.soat.supply.model.event.OrderSuppliesReservedEvent
 import br.com.soat.order.OrderRepository
-import br.com.soat.shared.repository.EventRepository
+import br.com.soat.event.repository.EventRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.model.Supply

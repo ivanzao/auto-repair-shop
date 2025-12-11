@@ -2,7 +2,7 @@ package br.com.soat.worker.event.handler
 
 import br.com.soat.event.EventHandler
 import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
-import br.com.soat.shared.DomainEvent
+import br.com.soat.event.model.DomainEvent
 import br.com.soat.supply.service.SupplyStockService
 import kotlin.reflect.KClass
 import org.slf4j.LoggerFactory

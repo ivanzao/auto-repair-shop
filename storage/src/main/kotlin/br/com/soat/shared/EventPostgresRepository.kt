@@ -1,6 +1,8 @@
 package br.com.soat.shared
 
-import br.com.soat.shared.repository.EventRepository
+import br.com.soat.event.model.DomainEvent
+import br.com.soat.event.model.EventStatus
+import br.com.soat.event.repository.EventRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime

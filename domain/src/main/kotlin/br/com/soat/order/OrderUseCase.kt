@@ -9,8 +9,8 @@ import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
 import br.com.soat.order.model.request.StartOrderDiagnosisRequest
 import br.com.soat.service.ServiceRepository
 import br.com.soat.service.model.Service
-import br.com.soat.shared.repository.CommandRepository
-import br.com.soat.shared.repository.EventRepository
+import br.com.soat.command.repository.CommandRepository
+import br.com.soat.event.repository.EventRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.user.UserRepository
 import br.com.soat.vehicle.VehicleRepository

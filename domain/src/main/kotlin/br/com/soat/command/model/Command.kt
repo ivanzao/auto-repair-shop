@@ -1,4 +1,4 @@
-package br.com.soat.shared
+package br.com.soat.command.model
 
 import java.time.LocalDateTime
 import java.util.UUID

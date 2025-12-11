@@ -1,6 +1,6 @@
 package br.com.soat.worker.event.handler
 
-import br.com.soat.shared.DomainEvent
+import br.com.soat.event.model.DomainEvent
 import kotlin.reflect.KClass
 
 interface EventHandler {

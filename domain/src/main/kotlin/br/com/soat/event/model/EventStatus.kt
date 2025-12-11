@@ -1,4 +1,4 @@
-package br.com.soat.shared
+package br.com.soat.event.model
 
 enum class EventStatus {
     PENDING,

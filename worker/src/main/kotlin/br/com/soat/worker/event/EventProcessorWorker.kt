@@ -1,7 +1,7 @@
 package br.com.soat.worker.event
 
 import br.com.soat.event.EventProcessor
-import br.com.soat.shared.repository.EventRepository
+import br.com.soat.event.repository.EventRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
