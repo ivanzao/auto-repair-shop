@@ -12,11 +12,12 @@ class CommandProcessor(
 
     private val logger = LoggerFactory.getLogger(CommandProcessor::class.java)
 
-    private val handlerMap: Map<String, CommandHandler> =
-        handlers.associateBy { it.commandType.qualifiedName!! }
+    private val handlerMap: Map<String, CommandHandler> = handlers.associateBy { it.commandType.qualifiedName!! }
 
-    fun processCommands(commands: List<Command>) {
-        commands.forEach { command -> processCommand(command) }
+    fun processCommands() {
+        commandRepository.findPendingCommands(10).forEach {
+            command -> processCommand(command)
+        }
     }
 
     fun processCommand(command: Command) {

@@ -1,43 +1,41 @@
 package br.com.soat.worker.command
 
 import br.com.soat.command.CommandProcessor
-import br.com.soat.command.repository.CommandRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 
 class CommandProcessorWorker(
-    private val commandRepository: CommandRepository,
     private val commandProcessor: CommandProcessor,
     private val dispatcher: CoroutineDispatcher
 ) {
+
     private val logger = LoggerFactory.getLogger(CommandProcessorWorker::class.java)
 
     private var scope: CoroutineScope? = null
     private var isRunning = false
+    private var job: Job? = null
 
     fun start() {
         if (isRunning) return
         isRunning = true
 
         scope = CoroutineScope(dispatcher).apply {
-            launch {
+            job = launch {
                 logger.info("CommandProcessorWorker started")
-                while (isActive) {
+                while (isRunning) {
                     try {
-                        val pendingCommands = commandRepository.findPendingCommands(limit = 10)
-                        if (pendingCommands.isNotEmpty()) {
-                            commandProcessor.processCommands(pendingCommands)
-                        }
+                        commandProcessor.processCommands()
+                        delay(1000)
                     } catch (e: Exception) {
                         logger.error("Error in CommandProcessorWorker loop", e)
+                        delay(5000)
                     }
-
-                    delay(1000)
                 }
             }
         }
@@ -45,6 +43,7 @@ class CommandProcessorWorker(
 
     fun stop() {
         isRunning = false
+        runBlocking { job?.join() }
         scope?.cancel()
     }
 }

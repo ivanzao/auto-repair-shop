@@ -12,11 +12,12 @@ class EventProcessor(
 
     private val logger = LoggerFactory.getLogger(EventProcessor::class.java)
 
-    private val handlerMap: Map<String, List<EventHandler>> =
-        handlers.groupBy { it.eventType.qualifiedName!! }
+    private val handlerMap: Map<String, List<EventHandler>> = handlers.groupBy { it.eventType.qualifiedName!! }
 
-    fun processEvents(events: List<DomainEvent>) {
-        events.forEach { event -> processEvent(event) }
+    fun processEvents() {
+        eventRepository.findPendingEvents(10).forEach {
+            event -> processEvent(event)
+        }
     }
 
     fun processEvent(event: DomainEvent) {

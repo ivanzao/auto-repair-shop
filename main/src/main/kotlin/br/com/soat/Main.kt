@@ -117,6 +117,6 @@ val applicationModule = module {
     single { CommandProcessor(get(), getAll()) }
     single { EventProcessor(get(), getAll()) }
 
-    single { CommandProcessorWorker(get(), get(), get()) }
-    single { EventProcessorWorker(get(), get(), get()) }
+    single { CommandProcessorWorker(get(), get()) }
+    single { EventProcessorWorker(get(), get()) }
 }

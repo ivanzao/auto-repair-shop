@@ -55,15 +55,6 @@ class EventPostgresRepository : EventRepository {
             }
     }
 
-    override fun existsByPayload(type: String, partialPayload: String): Boolean = transaction {
-        Events.selectAll()
-            .where { 
-                (Events.type like "%$type%") and 
-                (Events.payload like "%$partialPayload%") 
-            }
-            .count() > 0
-    }
-
     override fun markAsProcessed(eventId: UUID, consumerId: String) {
         transaction {
             ProcessedEvents.insert {
