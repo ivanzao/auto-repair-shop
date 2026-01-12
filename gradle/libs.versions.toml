@@ -17,6 +17,8 @@ java-jwt = "4.5.0"
 shedlock = "7.5.0"
 mailersend = "1.4.1"
 mockk = "1.14.7"
+jacoco = "0.8.12"
+sonarqube = "5.1.0.4882"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -78,3 +80,4 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
