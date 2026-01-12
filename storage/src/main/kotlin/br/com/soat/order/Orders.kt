@@ -4,7 +4,7 @@ import br.com.soat.customer.Customers
 import br.com.soat.customer.toCustomer
 import br.com.soat.order.model.Order
 import br.com.soat.service.Services
-import br.com.soat.service.model.Service
+import br.com.soat.order.model.OrderService
 import br.com.soat.supply.Supplies
 import br.com.soat.supply.model.SupplyRequest
 import br.com.soat.user.Users
@@ -55,7 +55,7 @@ object OrderSupplies : Table("order_supplies") {
 }
 
 fun ResultRow.toOrder(
-    services: List<Service>,
+    services: List<OrderService>,
     supplies: List<SupplyRequest>
 ) = Order(
     id = this[Orders.id],

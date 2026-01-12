@@ -1,16 +1,10 @@
 package br.com.soat.auth.port
 
+import br.com.soat.auth.model.AuthenticationTokenValidationResult
 import br.com.soat.user.model.User
 import java.time.LocalDateTime
-import java.util.UUID
 
 interface AuthenticationTokenProvider {
     fun generate(user: User, expiresAt: LocalDateTime): String
-    fun validate(token: String): TokenValidationResult
+    fun validate(token: String): AuthenticationTokenValidationResult
 }
-
-data class TokenValidationResult(
-    val userId: UUID?,
-    val role: String?,
-    val isValid: Boolean
-)

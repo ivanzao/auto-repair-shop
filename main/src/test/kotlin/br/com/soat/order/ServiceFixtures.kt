@@ -1,8 +1,8 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
-import br.com.soat.service.ServiceRepository
-import br.com.soat.service.model.Service
+import br.com.soat.order.repository.OrderServiceRepository
+import br.com.soat.order.model.OrderService
 import br.com.soat.supply.model.SupplyRequest
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -17,8 +17,8 @@ fun IntegrationTest.createService(
     name: String = "Generic Repair",
     description: String? = null,
     price: BigDecimal = BigDecimal.TEN
-) = get<ServiceRepository>().create(
-    Service(
+) = get<OrderServiceRepository>().create(
+    OrderService(
         id = id,
         createdAt = createdAt,
         modifiedAt = modifiedAt,

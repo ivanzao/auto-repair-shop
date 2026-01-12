@@ -1,126 +1,173 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
+import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.customer.createCustomer
+import br.com.soat.mail.EmailService
+import br.com.soat.mail.model.OrderQuoteApprovalEmailInput
+import br.com.soat.order.dto.OrderQuoteApprovalRequestDTO
 import br.com.soat.order.dto.CreateOrderRequestDTO
 import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
-import br.com.soat.order.dto.OrderResponseDTO
+import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
+import br.com.soat.order.dto.SupplyRequestDTO
+import br.com.soat.order.model.Order
+import br.com.soat.order.model.OrderApprovalToken
+import br.com.soat.order.model.OrderSchedule
+import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.repository.OrderRepository
+import br.com.soat.order.repository.OrderScheduleRepository
+import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.createSupply
 import br.com.soat.supply.model.SupplyRequest
 import br.com.soat.user.createUser
 import br.com.soat.vehicle.createVehicle
-import com.fasterxml.jackson.module.kotlin.readValue
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
+import br.com.soat.waitFor
+import io.mockk.every
+import io.mockk.slot
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
-import org.slf4j.LoggerFactory
 
 class OrderLifecycleIntegrationTest : IntegrationTest() {
 
-    private val logger = LoggerFactory.getLogger(OrderLifecycleIntegrationTest::class.java)
-
-    private val client: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(10))
-        .build()
+    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
+    private val orderRepository: OrderRepository by lazy { get<OrderRepository>() }
+    private val orderScheduleRepository: OrderScheduleRepository by lazy { get<OrderScheduleRepository>() }
+    private val orderApprovalTokenRepository: OrderApprovalTokenRepository by lazy { get<OrderApprovalTokenRepository>() }
+    private val emailService: EmailService by lazy { get<EmailService>() }
+    private val supplyRepository: SupplyRepository by lazy { get<SupplyRepository>() }
 
     @Test
     fun `should complete full order lifecycle`() {
+        // prepare
         val attendant = createUser()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
         val supply = createSupply(quantityInStock = 10)
         val service = createService(requiredSupplies = listOf(SupplyRequest(supply.id, 5)))
 
-        val createOrderRequest = CreateOrderRequestDTO(
+        val bearerToken = tokenProvider.generate(attendant, LocalDateTime.now().plusDays(1))
+
+        val emailInputSlot = slot<OrderQuoteApprovalEmailInput>()
+        every { emailService.sendOrderQuoteApprovalEmail(capture(emailInputSlot)) } answers {}
+
+        // test
+        val requestDto = CreateOrderRequestDTO(
             customerId = customer.id,
             vehicleId = vehicle.id,
             description = "Noise in the engine",
             attendantId = attendant.id
         )
+        val createOrderResponse = http.createOrder(requestDto, bearerToken)
+        assertEquals(201, createOrderResponse.statusCode())
 
-        val order = callCreateOrder(createOrderRequest)
+        // create and validate order
+        val createdOrder = orderRepository.findById(createOrderResponse.body().id)!!
+        assertEquals(customer.id, createdOrder.customer.id)
+        assertEquals(vehicle.id, createdOrder.vehicle.id)
+        assertEquals(attendant.id, createdOrder.attendant.id)
+        assertEquals(requestDto.description, createdOrder.description)
+        assertEquals(Order.Status.RECEIVED, createdOrder.status)
 
+        // validate public status endpoint (no authentication)
+        val statusAfterCreation = http.getOrderStatus(createdOrder.id.toString())
+        assertEquals(200, statusAfterCreation.statusCode())
+        assertEquals(createdOrder.id, statusAfterCreation.body().id)
+        assertEquals(Order.Status.RECEIVED, statusAfterCreation.body().status)
+        assertNotNull(statusAfterCreation.body().modifiedAt)
+
+        // create and validate order schedule delivery
+        val scheduleDeliveryRequest = OrderScheduleVehicleRequestDTO(
+            vehicleId = vehicle.id,
+            dateTime = LocalDateTime.now().plusHours(2)
+        )
+        val scheduleDeliveryResponse = http.scheduleDelivery(createdOrder.id.toString(), scheduleDeliveryRequest, bearerToken)
+        assertEquals(200, scheduleDeliveryResponse.statusCode())
+
+        val createdOrderScheduleDelivery = orderScheduleRepository.findAllByOrderId(createdOrder.id).single()
+        assertEquals(
+            scheduleDeliveryRequest.dateTime.truncatedTo(ChronoUnit.SECONDS),
+            createdOrderScheduleDelivery.dateTime.truncatedTo(ChronoUnit.SECONDS)
+        )
+        assertEquals(OrderSchedule.Type.DELIVERY, createdOrderScheduleDelivery.type)
+
+        // start diagnosis
         val startDiagnosisRequest = StartOrderDiagnosisRequestDTO(technician = "Tech Mike")
-        val orderInDiagnosis = callStartDiagnosis(order.id.toString(), startDiagnosisRequest)
+        val orderInDiagnosisResponse = http.startDiagnosis(createdOrder.id.toString(), startDiagnosisRequest, bearerToken)
+        assertEquals(200, orderInDiagnosisResponse.statusCode())
 
-        assertEquals("IN_DIAGNOSIS", orderInDiagnosis.status.name)
+        val orderInDiagnosis = orderRepository.findById(createdOrder.id)!!
+        assertEquals(Order.Status.IN_DIAGNOSIS, orderInDiagnosis.status)
+        assertEquals(startDiagnosisRequest.technician, orderInDiagnosis.technician)
 
+        // validate public status endpoint shows IN_DIAGNOSIS
+        val statusAfterDiagnosis = http.getOrderStatus(orderInDiagnosis.id.toString())
+        assertEquals(200, statusAfterDiagnosis.statusCode())
+        assertEquals(Order.Status.IN_DIAGNOSIS, statusAfterDiagnosis.body().status)
+
+        // finish diagnosis and reserve supplies
         val finishDiagnosisRequest = FinishOrderDiagnosisRequestDTO(
             servicesIds = listOf(service.id),
-            extraSuppliesRequests = emptyList()
+            extraSuppliesRequests = listOf(SupplyRequestDTO(supplyId = supply.id, quantity = 1))
         )
-        val orderDiagnosed = callFinishDiagnosis(order.id.toString(), finishDiagnosisRequest)
+        val orderDiagnosedResponse = http.finishDiagnosis(orderInDiagnosis.id.toString(), finishDiagnosisRequest, bearerToken)
+        assertEquals(200, orderDiagnosedResponse.statusCode())
 
-        waitForOrderStatus(orderDiagnosed.id.toString(), "WAITING_APPROVAL")
-    }
-
-    private fun waitForOrderStatus(
-        orderId: String,
-        expectedStatus: String
-    ) {
-        val maxRetries = 20
-        val sleepMs = 2000L
-
-        repeat(maxRetries) { _ ->
-            val status = getOrder(orderId).status.name
-            if (status == expectedStatus) {
-                logger.info("Order reached expected status: $expectedStatus")
-                return
-            }
-
-            Thread.sleep(sleepMs)
+        var orderWaitingApproval: Order? = orderRepository.findById(orderInDiagnosis.id)
+        var approvalToken: OrderApprovalToken? = null
+        waitFor {
+            orderWaitingApproval = orderRepository.findById(orderInDiagnosis.id)
+            orderWaitingApproval?.status == Order.Status.WAITING_APPROVAL
         }
+        assertEquals(Order.Status.WAITING_APPROVAL, orderWaitingApproval!!.status)
+        assertEquals(finishDiagnosisRequest.servicesIds, orderWaitingApproval!!.services.map { it.id })
+        assertEquals(finishDiagnosisRequest.extraSuppliesRequests.map { it.toModel() }, orderWaitingApproval!!.extraSupplies)
 
-        error("Order $orderId did not reach expected status: $expectedStatus after $maxRetries retries")
-    }
+        // validate public status endpoint shows WAITING_APPROVAL
+        val statusAfterWaitingApproval = http.getOrderStatus(orderWaitingApproval!!.id.toString())
+        assertEquals(200, statusAfterWaitingApproval.statusCode())
+        assertEquals(Order.Status.WAITING_APPROVAL, statusAfterWaitingApproval.body().status)
 
-    private fun getOrder(orderId: String): OrderResponseDTO {
-        val response = get("/orders/$orderId")
-        assertEquals(200, response.statusCode())
-        return mapper.readValue(response.body())
-    }
+        // assert approval token was created
+        waitFor {
+            approvalToken = orderApprovalTokenRepository.findByOrderId(orderWaitingApproval!!.id)
+            approvalToken != null
+        }
+        assertEquals(orderWaitingApproval!!.id, approvalToken!!.orderId)
+        assertEquals(null, approvalToken!!.usedAt)
+        assertEquals(true, approvalToken!!.isValid())
 
-    private fun callCreateOrder(dto: CreateOrderRequestDTO): OrderResponseDTO {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/orders", body)
-        assertEquals(201, response.statusCode())
-        return mapper.readValue(response.body())
-    }
+        // assert reserved supplies
+        val requestedSupply = supplyRepository.findById(supply.id)!!
+        assertEquals(4, requestedSupply.quantityInStock) // 10 starting - 5 from services - 1 from extra supplies
 
-    private fun callStartDiagnosis(orderId: String, dto: StartOrderDiagnosisRequestDTO): OrderResponseDTO {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/orders/$orderId/start-diagnosis", body)
-        assertEquals(200, response.statusCode())
-        return mapper.readValue(response.body())
-    }
+        // assert email was sent
+        assertEquals(approvalToken?.id.toString(), emailInputSlot.captured.callbackToken)
+        assertEquals(customer.name, emailInputSlot.captured.customerName)
+        assertEquals(customer.email, emailInputSlot.captured.customerEmail)
+        assertEquals(orderWaitingApproval!!.services.map { it.name }, emailInputSlot.captured.services.map { it.name })
+        assertEquals(listOf(OrderQuoteApprovalEmailInput.Supply(supply.name, 6, supply.price)), emailInputSlot.captured.supplies)
 
-    private fun callFinishDiagnosis(orderId: String, dto: FinishOrderDiagnosisRequestDTO): OrderResponseDTO {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/orders/$orderId/finish-diagnosis", body)
-        assertEquals(200, response.statusCode())
-        return mapper.readValue(response.body())
-    }
+        // approve order by token
+        val approveOrderRequest = OrderQuoteApprovalRequestDTO(approvalToken = approvalToken!!.id)
+        val approveOrderResponse = http.approveOrder(approveOrderRequest)
+        assertEquals(200, approveOrderResponse.statusCode())
 
-    private fun post(path: String, body: String): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort$path"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build()
-        return client.send(request, HttpResponse.BodyHandlers.ofString())
-    }
+        // assert order status is IN_PROGRESS
+        val orderInProgress = orderRepository.findById(orderWaitingApproval!!.id)!!
+        assertEquals(Order.Status.IN_PROGRESS, orderInProgress.status)
 
-    private fun get(path: String): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort$path"))
-            .header("Content-Type", "application/json")
-            .GET()
-            .build()
-        return client.send(request, HttpResponse.BodyHandlers.ofString())
+        // validate public status endpoint shows IN_PROGRESS
+        val statusAfterApproval = http.getOrderStatus(orderInProgress.id.toString())
+        assertEquals(200, statusAfterApproval.statusCode())
+        assertEquals(Order.Status.IN_PROGRESS, statusAfterApproval.body().status)
+
+        // assert approval token was marked as used
+        val usedApprovalToken = orderApprovalTokenRepository.findById(approvalToken!!.id)!!
+        assertEquals(false, usedApprovalToken.isValid())
+        assertEquals(true, usedApprovalToken.usedAt != null)
     }
 }

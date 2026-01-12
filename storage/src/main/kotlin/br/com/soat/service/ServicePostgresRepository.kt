@@ -1,6 +1,7 @@
 package br.com.soat.service
 
-import br.com.soat.service.model.Service
+import br.com.soat.order.model.OrderService
+import br.com.soat.order.repository.OrderServiceRepository
 import br.com.soat.supply.model.SupplyRequest
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -12,9 +13,9 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
-class ServicePostgresRepository : ServiceRepository {
+class ServicePostgresRepository : OrderServiceRepository {
 
-    override fun create(service: Service): Service = transaction {
+    override fun create(service: OrderService): OrderService = transaction {
         Services.insert {
             it[id] = service.id
             it[createdAt] = service.createdAt.toKotlinLocalDateTime()
@@ -31,7 +32,7 @@ class ServicePostgresRepository : ServiceRepository {
         service
     }
 
-    override fun update(service: Service): Service = transaction {
+    override fun update(service: OrderService): OrderService = transaction {
         Services.update({ Services.id eq service.id }) {
             it[modifiedAt] = service.modifiedAt.toKotlinLocalDateTime()
             it[version] = service.version + 1
@@ -46,7 +47,7 @@ class ServicePostgresRepository : ServiceRepository {
         findById(service.id) ?: throw IllegalStateException("Service not found after update")
     }
 
-    override fun findById(id: UUID): Service? = transaction {
+    override fun findById(id: UUID): OrderService? = transaction {
         val serviceRow = Services.selectAll()
             .where { Services.id eq id }
             .singleOrNull() ?: return@transaction null
@@ -59,7 +60,7 @@ class ServicePostgresRepository : ServiceRepository {
         serviceRow.toService(supplies)
     }
 
-    override fun findAllByIds(servicesIds: List<UUID>): List<Service> = transaction {
+    override fun findAllByIds(servicesIds: List<UUID>): List<OrderService> = transaction {
         val servicesRows = Services.selectAll()
             .where { Services.id inList servicesIds }
             .toList()
@@ -76,7 +77,7 @@ class ServicePostgresRepository : ServiceRepository {
         }
     }
 
-    private fun insertSupplies(service: Service) {
+    private fun insertSupplies(service: OrderService) {
         if (service.requiredSupplies.isNotEmpty()) {
             ServiceSupplies.batchInsert(service.requiredSupplies) { supply ->
                 this[ServiceSupplies.serviceId] = service.id

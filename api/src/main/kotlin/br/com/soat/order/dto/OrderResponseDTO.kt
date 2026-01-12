@@ -3,7 +3,7 @@ package br.com.soat.order.dto
 import br.com.soat.customer.model.Customer
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.Order.Status
-import br.com.soat.service.model.Service
+import br.com.soat.order.model.OrderService
 import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
@@ -20,7 +20,7 @@ data class OrderResponseDTO(
     val attendant: User,
 
     val description: String,
-    val services: List<Service>,
+    val services: List<OrderService>,
     val technician: String? = null,
 ) {
     companion object {

@@ -14,13 +14,13 @@ class EventProcessor(
 
     private val handlerMap: Map<String, List<EventHandler>> = handlers.groupBy { it.eventType.qualifiedName!! }
 
-    fun processEvents() {
+    fun processPendingEvents() {
         eventRepository.findPendingEvents(10).forEach {
-            event -> processEvent(event)
+            event -> process(event)
         }
     }
 
-    fun processEvent(event: DomainEvent) {
+    fun process(event: DomainEvent) {
         try {
             val eventTypeKey = event::class.qualifiedName!!
             val eventHandlers = handlerMap[eventTypeKey]

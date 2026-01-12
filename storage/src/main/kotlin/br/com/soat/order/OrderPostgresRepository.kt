@@ -2,10 +2,9 @@ package br.com.soat.order
 
 import br.com.soat.customer.Customers
 import br.com.soat.order.model.Order
-import br.com.soat.service.ServiceRepository
-import br.com.soat.service.ServiceSupplies
+import br.com.soat.order.repository.OrderServiceRepository
+import br.com.soat.order.repository.OrderRepository
 import br.com.soat.service.Services
-import br.com.soat.service.toService
 import br.com.soat.supply.model.SupplyRequest
 import br.com.soat.user.Users
 import br.com.soat.vehicle.Vehicles
@@ -22,7 +21,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
 class OrderPostgresRepository(
-    private val serviceRepository: ServiceRepository
+    private val serviceRepository: OrderServiceRepository
 ) : OrderRepository {
 
     override fun findById(id: UUID): Order? = transaction {

@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":storage"))
     implementation(project(":worker"))
     implementation(project(":jwt"))
+    implementation(project(":email"))
 
     implementation(libs.kotlinx.coroutines.core)
 
@@ -48,4 +49,5 @@ dependencies {
     testImplementation(libs.jackson.datatype.jsr310)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.exposed.core)
+    testImplementation(libs.mockk)
 }

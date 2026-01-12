@@ -4,8 +4,9 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
 import org.flywaydb.core.Flyway
+import javax.sql.DataSource
 
-fun connectToDatabase(params: DatabaseConnectionParams) {
+fun connectToDatabase(params: DatabaseConnectionParams): DataSource {
     val datasource = HikariDataSource(HikariConfig().apply {
         jdbcUrl = params.jdbcUrl
         driverClassName = params.driverClassName
@@ -23,6 +24,8 @@ fun connectToDatabase(params: DatabaseConnectionParams) {
         .locations("classpath:db/migration")
         .load()
         .migrate()
+
+    return datasource
 }
 
 data class DatabaseConnectionParams(

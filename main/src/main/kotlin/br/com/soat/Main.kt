@@ -1,29 +1,57 @@
 package br.com.soat
 
-import br.com.soat.auth.LoginUseCase
 import br.com.soat.auth.JWTAuthenticationTokenProvider
+import br.com.soat.auth.LoginUseCase
 import br.com.soat.auth.RefreshTokenPostgresRepository
 import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.auth.port.RefreshTokenRepository
+import br.com.soat.bus.CommandBus
+import br.com.soat.bus.EventBus
+import br.com.soat.command.CommandPostgresRepository
+import br.com.soat.command.CommandProcessor
+import br.com.soat.command.CommandPublisher
+import br.com.soat.command.handler.CommandHandler
+import br.com.soat.command.handler.SendQuoteToClientCommandHandler
+import br.com.soat.command.repository.CommandRepository
 import br.com.soat.config.Config
+import br.com.soat.config.fromClasspath
+import br.com.soat.consumer.CommandConsumerWorker
+import br.com.soat.consumer.EventConsumerWorker
 import br.com.soat.customer.CustomerPostgresRepository
 import br.com.soat.customer.CustomerRepository
 import br.com.soat.customer.CustomerUseCase
+import br.com.soat.email.MailerSendEmailService
+import br.com.soat.event.EventHandler
+import br.com.soat.event.EventPostgresRepository
+import br.com.soat.event.EventProcessor
+import br.com.soat.event.EventPublisher
+import br.com.soat.event.handler.OrderDiagnoseFinishedEventHandler
+import br.com.soat.event.handler.SuppliesReservedEventHandler
+import br.com.soat.event.repository.EventRepository
+import br.com.soat.mail.EmailService
+import br.com.soat.publisher.DefaultCommandPublisher
+import br.com.soat.publisher.DefaultEventPublisher
+import br.com.soat.scheduler.ScheduledTaskRunner
+import br.com.soat.scheduler.ScheduledTask
+import br.com.soat.scheduler.task.CommandProcessorTask
+import br.com.soat.scheduler.task.EventProcessorTask
+import br.com.soat.order.OrderApprovalTokenPostgresRepository
+import br.com.soat.order.OrderListenerUseCase
 import br.com.soat.order.OrderPostgresRepository
-import br.com.soat.order.OrderRepository
+import br.com.soat.order.OrderSchedulePostgresRepository
 import br.com.soat.order.OrderUseCase
+import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.repository.OrderRepository
+import br.com.soat.order.repository.OrderScheduleRepository
+import br.com.soat.order.repository.OrderServiceRepository
 import br.com.soat.security.HashService
 import br.com.soat.service.ServicePostgresRepository
-import br.com.soat.service.ServiceRepository
-import br.com.soat.shared.CommandPostgresRepository
-import br.com.soat.shared.EventPostgresRepository
-import br.com.soat.command.repository.CommandRepository
-import br.com.soat.event.repository.EventRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.supply.SupplyPostgresRepository
 import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.SupplyUseCase
 import br.com.soat.supply.service.SupplyStockService
+import br.com.soat.supply.service.SupplyStockListenerService
 import br.com.soat.transaction.PostgresTransactionHandler
 import br.com.soat.user.UserPostgresRepository
 import br.com.soat.user.UserRepository
@@ -31,16 +59,6 @@ import br.com.soat.user.UserUseCase
 import br.com.soat.vehicle.VehiclePostgresRepository
 import br.com.soat.vehicle.VehicleRepository
 import br.com.soat.vehicle.VehicleUseCase
-import br.com.soat.command.CommandHandler
-import br.com.soat.command.CommandProcessor
-import br.com.soat.config.fromClasspath
-import br.com.soat.event.EventHandler
-import br.com.soat.event.EventProcessor
-import br.com.soat.worker.command.CommandProcessorWorker
-import br.com.soat.worker.command.handler.SendQuoteToClientCommandHandler
-import br.com.soat.worker.event.EventProcessorWorker
-import br.com.soat.worker.event.handler.OrderDiagnoseFinishedEventHandler
-import br.com.soat.worker.event.handler.SuppliesReservedEventHandler
 import java.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -60,7 +78,7 @@ fun main() {
 
     val config  = koinApplication.koin.get<Config>()
 
-    connectToDatabase(
+    val dataSource = connectToDatabase(
         DatabaseConnectionParams(
             jdbcUrl = config.getString("database.url"),
             driverClassName = config.getString("database.driverClassName"),
@@ -70,8 +88,13 @@ fun main() {
         )
     )
 
-    koinApplication.koin.get<CommandProcessorWorker>().start()
-    koinApplication.koin.get<EventProcessorWorker>().start()
+    // Start event/command consumers (Kafka-like behavior)
+    koinApplication.koin.get<EventConsumerWorker>().start()
+    koinApplication.koin.get<CommandConsumerWorker>().start()
+    logger.info("Event and Command consumers started")
+
+    // Start scheduled tasks (fallback processor)
+    koinApplication.koin.get<ScheduledTaskRunner>().start(dataSource)
 
     KtorHttpServer(
         koin = koinApplication.koin,
@@ -84,6 +107,10 @@ val applicationModule = module {
     //config
     single<Config> { Config.fromClasspath("application.yaml") }
     single<Clock> { Clock.systemUTC() }
+    single<CoroutineDispatcher> { Dispatchers.IO }
+
+    // email
+    single<EmailService> { MailerSendEmailService(get()) }
 
     // storage
     single<UserRepository> { UserPostgresRepository() }
@@ -91,7 +118,9 @@ val applicationModule = module {
     single<VehicleRepository> { VehiclePostgresRepository() }
     single<CustomerRepository> { CustomerPostgresRepository() }
     single<OrderRepository> { OrderPostgresRepository(get()) }
-    single<ServiceRepository> { ServicePostgresRepository() }
+    single<OrderServiceRepository> { ServicePostgresRepository() }
+    single<OrderScheduleRepository> { OrderSchedulePostgresRepository() }
+    single<OrderApprovalTokenRepository> { OrderApprovalTokenPostgresRepository() }
     single<EventRepository> { EventPostgresRepository() }
     single<CommandRepository> { CommandPostgresRepository() }
     single<RefreshTokenRepository> { RefreshTokenPostgresRepository() }
@@ -103,20 +132,35 @@ val applicationModule = module {
     single<LoginUseCase> { LoginUseCase(get(), get(), get(), get(), get(), get(), get()) }
     single<UserUseCase> { UserUseCase(get(), get()) }
     single<SupplyUseCase> { SupplyUseCase(get()) }
-    single<SupplyStockService>{ SupplyStockService(get(), get(), get(), get())}
+    single<SupplyStockService> { SupplyStockService() }
+    single<SupplyStockListenerService> { SupplyStockListenerService(get(), get(), get(), get(), get()) }
     single<VehicleUseCase> { VehicleUseCase(get()) }
     single<CustomerUseCase> { CustomerUseCase(get()) }
-    single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
+    single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single<OrderListenerUseCase> { OrderListenerUseCase(get(), get(), get(), get(), get(), get(), get()) }
 
-    // worker
-    single<CoroutineDispatcher> { Dispatchers.IO }
-    single { SendQuoteToClientCommandHandler() } bind CommandHandler::class
+    // worker - buses (simulates Kafka topics)
+    single { EventBus() }
+    single { CommandBus() }
+
+    // worker - processors and handlers
+    single { SendQuoteToClientCommandHandler(get()) } bind CommandHandler::class
     single { OrderDiagnoseFinishedEventHandler(get()) } bind EventHandler::class
     single { SuppliesReservedEventHandler(get()) } bind EventHandler::class
 
     single { CommandProcessor(get(), getAll()) }
     single { EventProcessor(get(), getAll()) }
 
-    single { CommandProcessorWorker(get(), get()) }
-    single { EventProcessorWorker(get(), get()) }
+    // publishers - proactive outbox pattern (publish to buses, not processors)
+    single<EventPublisher> { DefaultEventPublisher(get(), get()) }
+    single<CommandPublisher> { DefaultCommandPublisher(get(), get()) }
+
+    // consumers - bridge between buses and processors (simulates Kafka consumers)
+    single { EventConsumerWorker(get(), get(), get()) }
+    single { CommandConsumerWorker(get(), get(), get()) }
+
+    // scheduled tasks - fallback processor
+    single { CommandProcessorTask(get()) } bind ScheduledTask::class
+    single { EventProcessorTask(get()) } bind ScheduledTask::class
+    single { ScheduledTaskRunner(getAll()) }
 }

@@ -1,47 +1,39 @@
 package br.com.soat.vehicle
 
 import br.com.soat.IntegrationTest
+import br.com.soat.auth.port.AuthenticationTokenProvider
+import br.com.soat.customer.dto.CreateCustomerRequestDTO
+import br.com.soat.user.createUser
 import br.com.soat.vehicle.dto.CreateVehicleRequestDTO
-import br.com.soat.vehicle.dto.VehicleResponseDTO
-import com.fasterxml.jackson.module.kotlin.readValue
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
+import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class VehicleIntegrationTest : IntegrationTest() {
 
-    private val client: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(2))
-        .build()
+    private val vehicleRepository: VehicleRepository by lazy { get<VehicleRepository>() }
+    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
 
-    private fun createCustomer(): UUID {
-        val requestDto = mapOf(
-            "name" to "Test Customer",
-            "document" to Random.nextLong(10000000000L, 99999999999L).toString(),
-            "email" to "test@example.com",
-            "contact" to "+55 11 99999-9999"
+    private fun createCustomer(bearerToken: String): UUID {
+        val requestDto = CreateCustomerRequestDTO(
+            name = "Test Customer",
+            document = Random.nextLong(10000000000L, 99999999999L).toString(),
+            email = "test${Random.nextLong()}@example.com",
+            contact = "+55 11 99999-9999"
         )
-        val body = mapper.writeValueAsString(requestDto)
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/customers"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        @Suppress("UNCHECKED_CAST")
-        val responseDto = mapper.readValue(response.body(), Map::class.java) as Map<String, Any>
-        return UUID.fromString(responseDto["id"] as String)
+        val response = http.createCustomer(requestDto, bearerToken)
+        return UUID.fromString(response.body().id)
     }
 
     @Test
-    fun `should create vehicle and return 201 with payload`() {
-        val clientId = createCustomer()
+    fun `should create vehicle successfully`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val clientId = createCustomer(bearerToken)
+
         val requestDto = CreateVehicleRequestDTO(
             clientId = clientId,
             plate = "ABC-1234",
@@ -50,30 +42,23 @@ class VehicleIntegrationTest : IntegrationTest() {
             year = 2024
         )
 
-        val body = mapper.writeValueAsString(requestDto)
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles"))
-            .timeout(Duration.ofSeconds(3))
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build()
+        val createVehicleResponse = http.createVehicle(requestDto, bearerToken)
+        assertEquals(201, createVehicleResponse.statusCode(), "HTTP status code must be 201 Created")
 
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        assertEquals(201, response.statusCode(), "HTTP status code must be 201 Created")
-
-        val responseDto: VehicleResponseDTO = mapper.readValue(response.body())
-        assertEquals(requestDto.plate, responseDto.plate)
-        assertEquals(requestDto.brand, responseDto.brand)
-        assertEquals(requestDto.model, responseDto.model)
-        assertEquals(requestDto.year, responseDto.year)
-        assertEquals(requestDto.clientId.toString(), responseDto.clientId)
+        val createdVehicle = vehicleRepository.findById(UUID.fromString(createVehicleResponse.body().id))!!
+        assertEquals(requestDto.plate, createdVehicle.plate)
+        assertEquals(requestDto.brand, createdVehicle.brand)
+        assertEquals(requestDto.model, createdVehicle.model)
+        assertEquals(requestDto.year, createdVehicle.year)
+        assertEquals(requestDto.clientId, createdVehicle.clientId)
     }
 
     @Test
     fun `should get vehicle by id`() {
-        // Create
-        val clientId = createCustomer()
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val clientId = createCustomer(bearerToken)
+
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
             plate = "XYZ-5678",
@@ -81,36 +66,28 @@ class VehicleIntegrationTest : IntegrationTest() {
             model = "Civic",
             year = 2023
         )
-        val createBody = mapper.writeValueAsString(createRequestDto)
-        val createRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createBody))
-            .build()
-        val createResponse = client.send(createRequest, HttpResponse.BodyHandlers.ofString())
-        val createdVehicle: VehicleResponseDTO = mapper.readValue(createResponse.body())
 
-        // Get
-        val getRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles/${createdVehicle.id}"))
-            .GET()
-            .build()
-        val getResponse = client.send(getRequest, HttpResponse.BodyHandlers.ofString())
-        
-        assertEquals(200, getResponse.statusCode())
-        val fetchedVehicle: VehicleResponseDTO = mapper.readValue(getResponse.body())
-        assertEquals(createdVehicle.id, fetchedVehicle.id)
+        val createResponse = http.createVehicle(createRequestDto, bearerToken)
+        assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
+
+        val vehicleId = createResponse.body().id
+        val getResponse = http.getVehicle(vehicleId, bearerToken)
+        assertEquals(200, getResponse.statusCode(), "HTTP status code must be 200 OK")
+
+        val fetchedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))!!
         assertEquals(createRequestDto.plate, fetchedVehicle.plate)
         assertEquals(createRequestDto.brand, fetchedVehicle.brand)
         assertEquals(createRequestDto.model, fetchedVehicle.model)
         assertEquals(createRequestDto.year, fetchedVehicle.year)
-        assertEquals(createRequestDto.clientId.toString(), fetchedVehicle.clientId)
+        assertEquals(createRequestDto.clientId, fetchedVehicle.clientId)
     }
 
     @Test
     fun `should update vehicle`() {
-        // Create
-        val clientId = createCustomer()
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val clientId = createCustomer(bearerToken)
+
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
             plate = "DEF-9012",
@@ -118,16 +95,11 @@ class VehicleIntegrationTest : IntegrationTest() {
             model = "Focus",
             year = 2022
         )
-        val createBody = mapper.writeValueAsString(createRequestDto)
-        val createRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createBody))
-            .build()
-        val createResponse = client.send(createRequest, HttpResponse.BodyHandlers.ofString())
-        val createdVehicle: VehicleResponseDTO = mapper.readValue(createResponse.body())
 
-        // Update
+        val createResponse = http.createVehicle(createRequestDto, bearerToken)
+        assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
+
+        val vehicleId = createResponse.body().id
         val updateRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
             plate = "DEF-9012",
@@ -135,27 +107,24 @@ class VehicleIntegrationTest : IntegrationTest() {
             model = "Focus Updated",
             year = 2022
         )
-        val updateBody = mapper.writeValueAsString(updateRequestDto)
-        val updateRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles/${createdVehicle.id}"))
-            .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.ofString(updateBody))
-            .build()
-        val updateResponse = client.send(updateRequest, HttpResponse.BodyHandlers.ofString())
 
-        assertEquals(200, updateResponse.statusCode())
-        val updatedVehicle: VehicleResponseDTO = mapper.readValue(updateResponse.body())
+        val updateResponse = http.updateVehicle(vehicleId, updateRequestDto, bearerToken)
+        assertEquals(200, updateResponse.statusCode(), "HTTP status code must be 200 OK")
+
+        val updatedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))!!
         assertEquals(updateRequestDto.plate, updatedVehicle.plate)
         assertEquals(updateRequestDto.brand, updatedVehicle.brand)
         assertEquals(updateRequestDto.model, updatedVehicle.model)
         assertEquals(updateRequestDto.year, updatedVehicle.year)
-        assertEquals(updateRequestDto.clientId.toString(), updatedVehicle.clientId)
+        assertEquals(updateRequestDto.clientId, updatedVehicle.clientId)
     }
 
     @Test
     fun `should delete vehicle`() {
-        // Create
-        val clientId = createCustomer()
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val clientId = createCustomer(bearerToken)
+
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
             plate = "DEL-0000",
@@ -163,30 +132,18 @@ class VehicleIntegrationTest : IntegrationTest() {
             model = "Me",
             year = 2000
         )
-        val createBody = mapper.writeValueAsString(createRequestDto)
-        val createRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createBody))
-            .build()
-        val createResponse = client.send(createRequest, HttpResponse.BodyHandlers.ofString())
-        val createdVehicle: VehicleResponseDTO = mapper.readValue(createResponse.body())
 
-        // Delete
-        val deleteRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles/${createdVehicle.id}"))
-            .DELETE()
-            .build()
-        val deleteResponse = client.send(deleteRequest, HttpResponse.BodyHandlers.ofString())
-        
-        assertEquals(204, deleteResponse.statusCode())
+        val createResponse = http.createVehicle(createRequestDto, bearerToken)
+        assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
-        // Verify Not Found
-        val getRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:$serverPort/vehicles/${createdVehicle.id}"))
-            .GET()
-            .build()
-        val getResponse = client.send(getRequest, HttpResponse.BodyHandlers.ofString())
-        assertEquals(404, getResponse.statusCode())
+        val vehicleId = createResponse.body().id
+        val deleteResponse = http.deleteVehicle(vehicleId, bearerToken)
+        assertEquals(204, deleteResponse.statusCode(), "HTTP status code must be 204 No Content")
+
+        val getResponse = http.getVehicle(vehicleId, bearerToken)
+        assertEquals(404, getResponse.statusCode(), "HTTP status code must be 404 Not Found")
+
+        val deletedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))
+        assertNull(deletedVehicle, "Vehicle should be deleted from database")
     }
 }

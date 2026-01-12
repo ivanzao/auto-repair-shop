@@ -2,12 +2,13 @@ package br.com.soat
 
 import br.com.soat.config.Config
 import br.com.soat.config.fromClasspath
-import br.com.soat.worker.command.CommandProcessorWorker
-import br.com.soat.worker.event.EventProcessorWorker
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import br.com.soat.consumer.CommandConsumerWorker
+import br.com.soat.consumer.EventConsumerWorker
+import br.com.soat.mail.EmailService
+import br.com.soat.scheduler.ScheduledTaskRunner
+import io.mockk.mockk
 import java.net.ServerSocket
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -15,21 +16,18 @@ import org.junit.jupiter.api.TestInstance
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.dsl.module
 import org.testcontainers.containers.PostgreSQLContainer
-import org.jetbrains.exposed.sql.transactions.transaction
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class IntegrationTest {
 
     protected var serverPort = ServerSocket(0).use { it.localPort }
-    protected var server: KtorHttpServer? = null
-    protected val postgresContainer = PostgreSQLContainer("postgres:18.1").withReuse(true)
+    protected val postgresContainer = PostgreSQLContainer("postgres:18.1").withReuse(true)!!
 
-    protected val mapper = jacksonObjectMapper()
-        .registerKotlinModule()
-        .registerModule(JavaTimeModule())
-
-    var koinApplication: KoinApplication? = null
+    lateinit var koinApplication: KoinApplication
+    lateinit var server: KtorHttpServer
+    lateinit var http: IntegrationTestHttpClient
 
     @BeforeEach
     fun cleanDatabase() {
@@ -47,12 +45,12 @@ abstract class IntegrationTest {
     }
 
     @BeforeAll
-    fun setup() {
+    open fun setup() {
         val config = Config.fromClasspath("application-test.yaml")
 
         postgresContainer.start()
 
-        connectToDatabase(
+        val dataSource = connectToDatabase(
             DatabaseConnectionParams(
                 jdbcUrl = postgresContainer.jdbcUrl,
                 driverClassName = postgresContainer.driverClassName,
@@ -62,32 +60,36 @@ abstract class IntegrationTest {
             )
         )
 
-        koinApplication = startKoin {
-            modules(applicationModule)
-        }
+        koinApplication = startKoin { modules(applicationModule, testModule) }
 
-        get<CommandProcessorWorker>().start()
-        get<EventProcessorWorker>().start()
+        http = IntegrationTestHttpClient(serverPort)
+
+        get<EventConsumerWorker>().start()
+        get<CommandConsumerWorker>().start()
+
+        get<ScheduledTaskRunner>().start(dataSource)
 
         server = KtorHttpServer(
-            koin = koinApplication!!.koin,
+            koin = koinApplication.koin,
             port = serverPort,
             wait = false
         )
 
-        server!!.start()
+        server.start()
     }
 
     @AfterAll
     fun tearDown() {
-        get<CommandProcessorWorker>().stop()
-        get<EventProcessorWorker>().stop()
-
-        server?.stop()
+        server.stop()
         postgresContainer.stop()
 
         stopKoin()
     }
 
-    inline fun <reified T> get(): T = koinApplication!!.koin.get()
+    inline fun <reified T> get(): T = koinApplication.koin.get()
+
+    private val testModule = module {
+        single<Config> { Config.fromClasspath("application-test.yaml") }
+        single<EmailService> { mockk() }
+    }
 }

@@ -1,5 +1,6 @@
 package br.com.soat.command
 
+import br.com.soat.command.handler.CommandHandler
 import br.com.soat.command.model.Command
 import br.com.soat.command.model.CommandStatus
 import br.com.soat.command.repository.CommandRepository
@@ -14,13 +15,13 @@ class CommandProcessor(
 
     private val handlerMap: Map<String, CommandHandler> = handlers.associateBy { it.commandType.qualifiedName!! }
 
-    fun processCommands() {
+    fun processPendingCommands() {
         commandRepository.findPendingCommands(10).forEach {
-            command -> processCommand(command)
+            command -> process(command)
         }
     }
 
-    fun processCommand(command: Command) {
+    fun process(command: Command) {
         try {
             val commandTypeKey = command::class.qualifiedName!!
             val handler = handlerMap[commandTypeKey]

@@ -17,12 +17,9 @@ fun Config.Companion.fromClasspath(path: String): Config {
 
 private fun buildConfig(raw: Map<String, Any?>): Config {
     val flat = flatten(raw)
+        .mapValues { (k, v) -> searchAsEnvironmentVariable(k) ?: v }
 
-    val merged: Map<String, Any?> = flat.mapValues { (k, v) ->
-        searchAsEnvironmentVariable(k) ?: v
-    }
-
-    return Config(merged).also {
+    return Config(flat).also {
         logger.info("Loaded ${it.size()} configs from application.yaml")
     }
 }

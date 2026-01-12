@@ -31,8 +31,9 @@ class Config(
     fun size() = flat.size
 
     private fun <T> get(key: String, defaultValue: T?, transformerFunc: (Any) -> T): T =
-        flat[key]?.let { transformerFunc(it) } ?: defaultValue
-        ?: throw IllegalArgumentException("Key '$key' not found and default value was not provided")
+        flat[key]?.let { transformerFunc(it) }
+            ?: defaultValue
+            ?: throw IllegalArgumentException("Key '$key' not found and default value was not provided")
 
     companion object
 }

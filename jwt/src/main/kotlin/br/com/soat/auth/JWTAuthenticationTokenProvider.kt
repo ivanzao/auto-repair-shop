@@ -1,7 +1,7 @@
 package br.com.soat.auth
 
+import br.com.soat.auth.model.AuthenticationTokenValidationResult
 import br.com.soat.auth.port.AuthenticationTokenProvider
-import br.com.soat.auth.port.TokenValidationResult
 import br.com.soat.config.Config
 import br.com.soat.user.model.User
 import com.auth0.jwt.JWT
@@ -16,6 +16,8 @@ class JWTAuthenticationTokenProvider(
     private val clock: Clock,
 ) : AuthenticationTokenProvider {
 
+    private val verifier = JWT.require(Algorithm.HMAC512(config.getString("security.jwt.secret"))).build()
+
     override fun generate(
         user: User,
         expiresAt: LocalDateTime
@@ -29,20 +31,14 @@ class JWTAuthenticationTokenProvider(
         .withJWTId(UUID.randomUUID().toString())
         .sign(Algorithm.HMAC512(config.getString("security.jwt.secret")))
 
-    override fun validate(token: String): TokenValidationResult {
-        return try {
-            val verifier = JWT.require(Algorithm.HMAC512(config.getString("security.jwt.secret")))
-                .build()
-
-            val decodedJWT = verifier.verify(token)
-
-            TokenValidationResult(
-                userId = UUID.fromString(decodedJWT.subject),
-                role = decodedJWT.getClaim("role").asString(),
-                isValid = true
-            )
-        } catch (_: Exception) {
-            TokenValidationResult(null, null, false)
-        }
+    override fun validate(token: String) = try {
+        val decodedJWT = verifier.verify(token)
+        AuthenticationTokenValidationResult(
+            userId = UUID.fromString(decodedJWT.subject),
+            role = decodedJWT.getClaim("role").asString(),
+            isValid = true
+        )
+    } catch (_: Exception) {
+        AuthenticationTokenValidationResult(null, null, false)
     }
 }

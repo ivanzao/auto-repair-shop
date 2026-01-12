@@ -1,7 +1,6 @@
 package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
-import br.com.soat.service.model.Service
 import br.com.soat.supply.model.SupplyRequest
 import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
@@ -21,17 +20,22 @@ data class Order(
     val customer: Customer,
     val vehicle: Vehicle,
     val attendant: User,
-    val services: List<Service> = emptyList(),
+    val services: List<OrderService> = emptyList(),
     val extraSupplies: List<SupplyRequest> = emptyList(),
 
     val description: String,
     val technician: String? = null,
 ) {
 
-    fun inDiagnosis() = copy(status = Status.IN_DIAGNOSIS)
+    fun inDiagnosis(technician: String) = copy(status = Status.IN_DIAGNOSIS, technician = technician)
     fun waitingApproval() = copy(status = Status.WAITING_APPROVAL)
+    fun inProgress() = copy(status = Status.IN_PROGRESS)
+    fun canceled() = copy(status = Status.CANCELED)
+    fun completed() = copy(status = Status.COMPLETED)
 
-    fun addServices(services: List<Service>) = copy(services = this.services + services)
+    fun addServices(services: List<OrderService>) = copy(services = this.services + services)
+
+    fun withExtraSupplyRequests(extraSupplies: List<SupplyRequest>) = copy(extraSupplies = extraSupplies)
 
     fun getRequiredSupplyRequests(): List<SupplyRequest> {
         val serviceSupplies = services.flatMap { it.requiredSupplies }
@@ -41,6 +45,6 @@ data class Order(
     }
 
     enum class Status {
-        RECEIVED, IN_DIAGNOSIS, WAITING_APPROVAL, APPROVED, REJECTED, IN_PROGRESS, CANCELED, COMPLETED
+        RECEIVED, IN_DIAGNOSIS, WAITING_APPROVAL, IN_PROGRESS, CANCELED, COMPLETED
     }
 }
