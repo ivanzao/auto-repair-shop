@@ -1,5 +1,8 @@
 package br.com.soat.user
 
+import br.com.soat.shared.document
+import br.com.soat.shared.email
+import br.com.soat.shared.phoneNumber
 import br.com.soat.user.model.User
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
@@ -14,9 +17,9 @@ object Users: Table() {
 
     val name = varchar("name", 255)
     val hashedPassword = varchar("hashed_password", 255)
-    val email = varchar("email", 255)
-    val contact = varchar("contact", 255)
-    val document = varchar("document", 255)
+    val email = email("email")
+    val contact = phoneNumber("contact")
+    val document = document("document")
     val role = varchar("role", 255)
 
     init {

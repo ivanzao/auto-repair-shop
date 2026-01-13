@@ -1,5 +1,8 @@
 package br.com.soat.user.model
 
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
 import java.time.LocalDateTime
 import java.time.LocalDateTime.now
 import java.util.UUID
@@ -13,9 +16,9 @@ data class User(
 
     val name: String,
     val hashedPassword: String,
-    val document: String,
-    val email: String,
-    val contact: String,
+    val document: Document,
+    val email: Email,
+    val contact: PhoneNumber,
     val role: Role,
 ) {
 

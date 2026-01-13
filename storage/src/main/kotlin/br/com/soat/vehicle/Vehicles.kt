@@ -1,5 +1,6 @@
 package br.com.soat.vehicle
 
+import br.com.soat.shared.vehiclePlate
 import br.com.soat.vehicle.model.Vehicle
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
@@ -14,7 +15,7 @@ object Vehicles : Table() {
 
     val client = uuid("client_id")
 
-    val plate = varchar("plate", 255)
+    val plate = vehiclePlate("plate")
     val brand = varchar("brand", 255)
     val model = varchar("model", 255)
     val year = integer("year")

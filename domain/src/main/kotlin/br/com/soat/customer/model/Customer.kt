@@ -1,5 +1,8 @@
 package br.com.soat.customer.model
 
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -10,7 +13,7 @@ data class Customer(
     val version: Int = 0,
 
     val name: String,
-    val document: String,
-    val email: String,
-    val contact: String,
+    val document: Document,
+    val email: Email,
+    val contact: PhoneNumber,
 )

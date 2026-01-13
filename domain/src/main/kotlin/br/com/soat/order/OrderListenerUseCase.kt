@@ -51,7 +51,7 @@ class OrderListenerUseCase(
         val email = OrderQuoteApprovalEmailInput(
             callbackToken = approvalToken.id.toString(),
             customerName = order.customer.name,
-            customerEmail = order.customer.email,
+            customerEmail = order.customer.email.value,
             services = order.services,
             supplies = supplies.map {
                 OrderQuoteApprovalEmailInput.Supply(

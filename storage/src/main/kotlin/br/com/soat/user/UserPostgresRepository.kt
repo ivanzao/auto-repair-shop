@@ -1,5 +1,7 @@
 package br.com.soat.user
 
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
 import br.com.soat.user.model.User
 import br.com.soat.exception.OptimisticLockException
 import java.util.UUID
@@ -22,7 +24,7 @@ class UserPostgresRepository : UserRepository {
             ?.toUser()
     }
 
-    override fun findByDocument(document: String) = transaction {
+    override fun findByDocument(document: Document) = transaction {
         Users.selectAll()
             .where { Users.document eq document }
             .limit(1)
@@ -30,7 +32,7 @@ class UserPostgresRepository : UserRepository {
             ?.toUser()
     }
 
-    override fun findByEmail(email: String) = transaction {
+    override fun findByEmail(email: Email) = transaction {
         Users.selectAll()
             .where { Users.email eq email }
             .limit(1)

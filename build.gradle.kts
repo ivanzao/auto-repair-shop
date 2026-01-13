@@ -22,9 +22,9 @@ sonar {
             "${project.layout.buildDirectory.get()}/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml")
 
         // Source and binary directories for all modules
-        val allSources = subprojects.map { "${it.projectDir}/src/main/kotlin" }.joinToString(",")
-        val allTests = subprojects.map { "${it.projectDir}/src/test/kotlin" }.joinToString(",")
-        val allBinaries = subprojects.map { "${it.projectDir}/build/classes/kotlin/main" }.joinToString(",")
+        val allSources = subprojects.joinToString(",") { "${it.projectDir}/src/main/kotlin" }
+        val allTests = subprojects.joinToString(",") { "${it.projectDir}/src/test/kotlin" }
+        val allBinaries = subprojects.joinToString(",") { "${it.projectDir}/build/classes/kotlin/main" }
 
         property("sonar.sources", allSources)
         property("sonar.tests", allTests)

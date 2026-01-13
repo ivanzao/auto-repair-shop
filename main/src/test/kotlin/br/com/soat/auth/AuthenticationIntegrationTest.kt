@@ -4,6 +4,9 @@ import br.com.soat.IntegrationTest
 import br.com.soat.auth.dto.AuthenticateUserRequestDTO
 import br.com.soat.auth.dto.RefreshTokenRequestDTO
 import br.com.soat.auth.port.AuthenticationTokenProvider
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
 import br.com.soat.user.dto.CreateUserRequestDTO
 import br.com.soat.user.dto.UserResponseDTO
 import br.com.soat.user.model.User
@@ -18,9 +21,9 @@ class AuthenticationIntegrationTest : IntegrationTest() {
     private val admin = User(
         name = "Admin",
         hashedPassword = "",
-        document = "99999999999",
-        email = "dummy@mail.com",
-        contact = "(11) 99999-9999",
+        document = Document("99999999999"),
+        email = Email("dummy@mail.com"),
+        contact = PhoneNumber("11999999999"),
         role = User.Role.ADMIN
     )
 

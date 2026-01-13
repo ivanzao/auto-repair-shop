@@ -14,9 +14,9 @@ data class CustomerResponseDTO(
         fun from(customer: Customer) = CustomerResponseDTO(
             id = customer.id.toString(),
             name = customer.name,
-            document = customer.document,
-            email = customer.email,
-            contact = customer.contact
+            document = customer.document.value,
+            email = customer.email.value,
+            contact = customer.contact.value
         )
     }
 }

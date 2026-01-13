@@ -1,5 +1,8 @@
 package br.com.soat.user.dto
 
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
 import br.com.soat.user.model.CreateUserRequest
 import br.com.soat.user.model.User
 
@@ -14,9 +17,9 @@ data class CreateUserRequestDTO(
 
     fun toModel() = CreateUserRequest(
         name = name,
-        document = document,
-        email = email,
-        contact = contact,
+        document = Document(document),
+        email = Email(email),
+        contact = PhoneNumber(contact),
         role = role,
         password = password
     )

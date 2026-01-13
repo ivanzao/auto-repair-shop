@@ -1,6 +1,7 @@
 package br.com.soat.vehicle
 
 import br.com.soat.IntegrationTest
+import br.com.soat.shared.vo.VehiclePlate
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
 import java.util.UUID
@@ -11,7 +12,7 @@ fun IntegrationTest.createVehicle(
     createdAt: LocalDateTime = LocalDateTime.now(),
     modifiedAt: LocalDateTime = LocalDateTime.now(),
     version: Int = 0,
-    plate: String = "ABC-1234",
+    plate: VehiclePlate = VehiclePlate("ABC1234"),
     brand: String = "Toyota",
     model: String = "Corolla",
     year: Int = 2024

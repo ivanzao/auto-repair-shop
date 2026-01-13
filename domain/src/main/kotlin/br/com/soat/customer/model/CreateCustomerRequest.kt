@@ -1,8 +1,12 @@
 package br.com.soat.customer.model
 
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
+
 data class CreateCustomerRequest(
     val name: String,
-    val document: String,
-    val email: String,
-    val contact: String,
+    val document: Document,
+    val email: Email,
+    val contact: PhoneNumber,
 )

@@ -1,6 +1,9 @@
 package br.com.soat.customer
 
 import br.com.soat.customer.model.Customer
+import br.com.soat.shared.document
+import br.com.soat.shared.email
+import br.com.soat.shared.phoneNumber
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
@@ -13,9 +16,9 @@ object Customers: Table() {
     val version = integer("version").default(0)
 
     val name = varchar("name", 255)
-    val document = varchar("document", 255)
-    val email = varchar("email", 255)
-    val contact = varchar("contact", 255)
+    val document = document("document")
+    val email = email("email")
+    val contact = phoneNumber("contact")
 }
 
 fun ResultRow.toCustomer(): Customer = Customer(

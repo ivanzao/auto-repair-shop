@@ -14,7 +14,7 @@ data class VehicleResponseDTO(
     companion object {
         fun from(vehicle: Vehicle) = VehicleResponseDTO(
             id = vehicle.id.toString(),
-            plate = vehicle.plate,
+            plate = vehicle.plate.value,
             brand = vehicle.brand,
             model = vehicle.model,
             year = vehicle.year,

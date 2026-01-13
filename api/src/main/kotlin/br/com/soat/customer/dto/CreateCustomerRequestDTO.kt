@@ -1,6 +1,9 @@
 package br.com.soat.customer.dto
 
 import br.com.soat.customer.model.CreateCustomerRequest
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
 
 data class CreateCustomerRequestDTO(
     val name: String,
@@ -10,8 +13,8 @@ data class CreateCustomerRequestDTO(
 ) {
     fun toModel() = CreateCustomerRequest(
         name = name,
-        document = document,
-        email = email,
-        contact = contact
+        document = Document(document),
+        email = Email(email),
+        contact = PhoneNumber(contact)
     )
 }
