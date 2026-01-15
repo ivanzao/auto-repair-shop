@@ -1,10 +1,11 @@
 plugins {
+    kotlin("jvm")
     application
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 application {
-    mainClass.set("br.com.soat.ApplicationKt")
+    mainClass.set("br.com.soat.MainKt")
 }
 
 tasks {
@@ -13,6 +14,9 @@ tasks {
         archiveClassifier.set("")
         archiveVersion.set("")
         mergeServiceFiles()
+        manifest {
+            attributes["Main-Class"] = "br.com.soat.MainKt"
+        }
     }
 
     test {

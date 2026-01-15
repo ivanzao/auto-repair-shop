@@ -1,20 +1,23 @@
 # Auto Repair Shop
 
-Sistema de gerenciamento para oficina mecânica desenvolvido em Kotlin com arquitetura multi-módulo.
+Sistema de gerenciamento para oficina mecânica desenvolvido em Kotlin com arquitetura inspirada em hexagonal/ports & adapters multi-módulo.
 
-## 📦 Módulos
-
-O projeto é dividido em 7 módulos:
-
-- **main** - Aplicação principal e configuração de dependências
-- **domain** - Lógica de negócio e casos de uso
-- **api** - Endpoints REST (Ktor)
-- **storage** - Persistência de dados (PostgreSQL/Exposed)
-- **worker** - Processamento de tarefas em background
-- **jwt** - Autenticação e gerenciamento de tokens
-- **email** - Serviço de envio de emails
-
-## 🛠️ Stack Tecnológica
+### Estrutura de Pastas
+```
+auto-repair-shop/
+├── main/                  # Aplicação principal
+├── domain/                # Lógica de negócio
+├── api/                   # REST API
+├── storage/               # Persistência
+├── worker/                # Background jobs
+├── jwt/                   # Autenticação
+├── email/                 # Envio de emails
+├── Dockerfile             # Multi-stage build (Gradle + JRE)
+├── docker-compose.yaml    # Orquestração (app + PostgreSQL)
+└── build.gradle.kts       # Build principal
+```
+---
+### Stack
 
 - **Linguagem**: Kotlin 2.2.10
 - **JVM**: Java 21
@@ -26,103 +29,67 @@ O projeto é dividido em 7 módulos:
 - **Migrations**: Flyway 11.17.0
 - **Testing**: JUnit 5, MockK, TestContainers
 - **Quality**: JaCoCo, SonarQube
-
-## 🧪 Testes
+---
+### Testes
 
 O projeto possui dois tipos de testes:
 
-### Testes Unitários
 ```bash
+# Testes unitários
 ./gradlew test
-```
 
-### Testes de Integração
-```bash
+# Testes de integração
 ./gradlew integrationTest
 ```
+
 **Nota**: Os testes de integração requerem Docker para executar containers do PostgreSQL via TestContainers.
 
-### Executar Todos os Testes
-```bash
-./gradlew test integrationTest
-```
+---
 
-## 📊 Cobertura de Código e SonarQube
+### Cobertura de Código
 
-### Gerar Relatório de Cobertura
+#### Gerar Relatório de Cobertura
 
-O projeto usa JaCoCo para medir a cobertura de código, incluindo **testes unitários E de integração**.
+O projeto usa JaCoCo para medir a cobertura de código, incluindo testes unitários e de integração.
 
-#### Relatório Agregado (todos os módulos)
 ```bash
 ./gradlew jacocoAggregatedReport
 ```
 
-**Visualizar**: Abra `build/reports/jacoco/jacocoAggregatedReport/html/index.html` no navegador
+Para visualizar, abra `build/reports/jacoco/jacocoAggregatedReport/html/index.html` no navegador
 
-#### Relatórios Individuais por Módulo
-```bash
-# Exemplo: módulo main
-./gradlew :main:jacocoMergedReport
-```
+---
 
-**Visualizar**: `main/build/reports/jacoco/jacocoMergedReport/html/index.html`
+### Executar o Projeto
 
-### Análise com SonarQube
+#### Opção 1: Com Docker (Recomendado)
 
 #### Pré-requisitos
-1. SonarQube Server rodando (local ou remoto)
-2. Token de autenticação do SonarQube
+- Docker
+- Docker Compose
 
-#### Configurar Variáveis de Ambiente
-
-**Windows (PowerShell)**:
-```powershell
-$env:SONAR_HOST_URL="http://localhost:9000"
-$env:SONAR_TOKEN="seu_token_aqui"
-```
-
-**Linux/Mac**:
+#### Iniciar os serviços
 ```bash
-export SONAR_HOST_URL=http://localhost:9000
-export SONAR_TOKEN=seu_token_aqui
+# Build e start
+docker-compose up --build -d
 ```
 
-#### Executar Análise
-```bash
-./gradlew sonar
+#### Acessar banco de dados
+```
+Host: localhost
+Port: 5432
+Database: postgres
+Username: postgres
+Password: test
 ```
 
-A task `sonar` automaticamente:
-1. Executa todos os testes (unitários + integração)
-2. Gera o relatório de cobertura agregado
-3. Envia os dados para o SonarQube
+#### Opção 2: Execução Local (sem Docker)
 
-#### Visualizar Resultados
+#### Pré-requisitos
+- Java 21
+- PostgreSQL rodando localmente
 
-Acesse o SonarQube em `http://localhost:9000` (ou seu servidor configurado) e busque pelo projeto **"auto-repair-shop"**.
-
-### Cobertura Atual
-
-- **Cobertura Total**: 77%
-- **Branches**: 45%
-- **Linhas**: 86%
-- **Métodos**: 91%
-- **Classes**: 92%
-
-#### Áreas Críticas sem Cobertura
-
-🔴 **Urgente**:
-- `br.com.soat.email` - 0% (serviço de envio de emails)
-- `br.com.soat.security` - 45% (hash de senhas, 79% dos branches sem cobertura)
-
-🟡 **Importante**:
-- `br.com.soat.config` - 66%
-- `br.com.soat.supply.model.event` - 47%
-- `br.com.soat.shared.util` - 0%
-
-## 🚀 Executar o Projeto
-
+#### Build e executar
 ```bash
 # Build
 ./gradlew build
@@ -130,31 +97,13 @@ Acesse o SonarQube em `http://localhost:9000` (ou seu servidor configurado) e bu
 # Executar
 ./gradlew :main:run
 ```
+---
+### Arquitetura Docker
 
-## 🔧 Desenvolvimento
+**Dockerfile**:
+- **Stage 1 (Build)**: `gradle:8.14-jdk21` - Build do fat JAR
+- **Stage 2 (Run)**: `eclipse-temurin:21-jre` - Execução leve
 
-### Estrutura de Pastas
-```
-auto-repair-shop/
-├── main/           # Aplicação principal
-├── domain/         # Lógica de negócio
-├── api/            # REST API
-├── storage/        # Persistência
-├── worker/         # Background jobs
-├── jwt/            # Autenticação
-├── email/          # Envio de emails
-└── build.gradle.kts
-```
-
-### Gradle Tasks Úteis
-
-```bash
-# Listar todas as tasks
-./gradlew tasks
-
-# Verificação completa (build + testes + cobertura)
-./gradlew clean build jacocoAggregatedReport
-
-# Análise completa com SonarQube
-./gradlew clean test integrationTest sonar
-```
+**docker-compose.yaml**:
+- **db**: PostgreSQL 18.1 com volume persistente
+- **app**: Aplicação Kotlin/Ktor
