@@ -25,7 +25,9 @@ import br.com.soat.event.EventHandler
 import br.com.soat.event.EventPostgresRepository
 import br.com.soat.event.EventProcessor
 import br.com.soat.event.EventPublisher
+import br.com.soat.event.handler.OrderCompletedEventHandler
 import br.com.soat.event.handler.OrderDiagnoseFinishedEventHandler
+import br.com.soat.event.handler.OrderInProgressEventHandler
 import br.com.soat.event.handler.SuppliesReservedEventHandler
 import br.com.soat.event.repository.EventRepository
 import br.com.soat.mail.EmailService
@@ -36,17 +38,23 @@ import br.com.soat.scheduler.ScheduledTask
 import br.com.soat.scheduler.task.CommandProcessorTask
 import br.com.soat.scheduler.task.EventProcessorTask
 import br.com.soat.order.OrderApprovalTokenPostgresRepository
+import br.com.soat.order.OrderExecutionMetricPostgresRepository
 import br.com.soat.order.OrderListenerUseCase
 import br.com.soat.order.OrderPostgresRepository
 import br.com.soat.order.OrderSchedulePostgresRepository
 import br.com.soat.order.OrderUseCase
 import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
 import br.com.soat.order.repository.OrderServiceRepository
 import br.com.soat.security.HashService
 import br.com.soat.service.ServicePostgresRepository
+import br.com.soat.service.ServiceUseCase
 import br.com.soat.shared.repository.RepositoryTransactionHandler
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
 import br.com.soat.supply.SupplyPostgresRepository
 import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.SupplyUseCase
@@ -56,12 +64,15 @@ import br.com.soat.transaction.PostgresTransactionHandler
 import br.com.soat.user.UserPostgresRepository
 import br.com.soat.user.UserRepository
 import br.com.soat.user.UserUseCase
+import br.com.soat.user.model.User
 import br.com.soat.vehicle.VehiclePostgresRepository
 import br.com.soat.vehicle.VehicleRepository
 import br.com.soat.vehicle.VehicleUseCase
 import java.time.Clock
+import java.util.UUID.randomUUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import org.koin.core.Koin
 import org.koin.core.context.startKoin
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -78,15 +89,7 @@ fun main() {
 
     val config  = koinApplication.koin.get<Config>()
 
-    val dataSource = connectToDatabase(
-        DatabaseConnectionParams(
-            jdbcUrl = config.getString("database.url"),
-            driverClassName = config.getString("database.driverClassName"),
-            username = config.getString("database.username"),
-            password = config.getString("database.password"),
-            maximumPoolSize = config.getInt("database.maximumPoolSize")
-        )
-    )
+    val dataSource = connectToDatabase(config)
 
     // Start event/command consumers (Kafka-like behavior)
     koinApplication.koin.get<EventConsumerWorker>().start()
@@ -95,6 +98,10 @@ fun main() {
 
     // Start scheduled tasks (fallback processor)
     koinApplication.koin.get<ScheduledTaskRunner>().start(dataSource)
+
+    if (config.getString("application.profile") == "dev") {
+        createDevAdmin(koinApplication.koin)
+    }
 
     KtorHttpServer(
         koin = koinApplication.koin,
@@ -121,6 +128,7 @@ val applicationModule = module {
     single<OrderServiceRepository> { ServicePostgresRepository() }
     single<OrderScheduleRepository> { OrderSchedulePostgresRepository() }
     single<OrderApprovalTokenRepository> { OrderApprovalTokenPostgresRepository() }
+    single<OrderExecutionMetricRepository> { OrderExecutionMetricPostgresRepository() }
     single<EventRepository> { EventPostgresRepository() }
     single<CommandRepository> { CommandPostgresRepository() }
     single<RefreshTokenRepository> { RefreshTokenPostgresRepository() }
@@ -132,12 +140,13 @@ val applicationModule = module {
     single<LoginUseCase> { LoginUseCase(get(), get(), get(), get(), get(), get(), get()) }
     single<UserUseCase> { UserUseCase(get(), get()) }
     single<SupplyUseCase> { SupplyUseCase(get()) }
+    single<ServiceUseCase> { ServiceUseCase(get()) }
     single<SupplyStockService> { SupplyStockService() }
     single<SupplyStockListenerService> { SupplyStockListenerService(get(), get(), get(), get(), get()) }
     single<VehicleUseCase> { VehicleUseCase(get()) }
     single<CustomerUseCase> { CustomerUseCase(get()) }
     single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    single<OrderListenerUseCase> { OrderListenerUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    single<OrderListenerUseCase> { OrderListenerUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     // worker - buses (simulates Kafka topics)
     single { EventBus() }
@@ -146,6 +155,8 @@ val applicationModule = module {
     // worker - processors and handlers
     single { SendQuoteToClientCommandHandler(get()) } bind CommandHandler::class
     single { OrderDiagnoseFinishedEventHandler(get()) } bind EventHandler::class
+    single { OrderInProgressEventHandler(get()) } bind EventHandler::class
+    single { OrderCompletedEventHandler(get()) } bind EventHandler::class
     single { SuppliesReservedEventHandler(get()) } bind EventHandler::class
 
     single { CommandProcessor(get(), getAll()) }
@@ -163,4 +174,24 @@ val applicationModule = module {
     single { CommandProcessorTask(get()) } bind ScheduledTask::class
     single { EventProcessorTask(get()) } bind ScheduledTask::class
     single { ScheduledTaskRunner(getAll()) }
+}
+
+private fun createDevAdmin(koin: Koin) {
+    val userRepository = koin.get<UserRepository>()
+    val email = Email("admin@dev.com")
+
+    if (userRepository.findByEmail(email) != null) return
+
+    koin.get<UserRepository>().create(
+        User(
+            id = randomUUID(),
+            name = "Admin",
+            email = email,
+            hashedPassword = koin.get<HashService>().hash("admin"),
+            role = User.Role.ADMIN,
+            document = Document("99999999999"),
+            contact = PhoneNumber("11999999999"),
+        )
+    )
+    logger.info("Created dev admin user.\nemail: admin@dev.com - password: admin")
 }

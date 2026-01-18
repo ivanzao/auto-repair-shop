@@ -46,19 +46,17 @@ abstract class IntegrationTest {
 
     @BeforeAll
     open fun setup() {
-        val config = Config.fromClasspath("application-test.yaml")
-
         postgresContainer.start()
 
-        val dataSource = connectToDatabase(
-            DatabaseConnectionParams(
-                jdbcUrl = postgresContainer.jdbcUrl,
-                driverClassName = postgresContainer.driverClassName,
-                username = postgresContainer.username,
-                password = postgresContainer.password,
-                maximumPoolSize = config.getInt("database.maximumPoolSize")
-            )
-        )
+        val config = Config.fromClasspath("application-test.yaml").apply {
+            put("database.url", postgresContainer.jdbcUrl)
+            put("database.username", postgresContainer.username)
+            put("database.password", postgresContainer.password)
+            put("database.driverClassName", postgresContainer.driverClassName)
+            put("server.port", serverPort)
+        }
+
+        val dataSource = connectToDatabase(config)
 
         koinApplication = startKoin { modules(applicationModule, testModule) }
 

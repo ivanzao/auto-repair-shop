@@ -22,7 +22,7 @@ class VehicleIntegrationTest : IntegrationTest() {
             name = "Test Customer",
             document = Random.nextLong(10000000000L, 99999999999L).toString(),
             email = "test${Random.nextLong()}@example.com",
-            contact = "+55 11 99999-9999"
+            contact = "11 99999-9999"
         )
         val response = http.createCustomer(requestDto, bearerToken)
         return UUID.fromString(response.body().id)
@@ -36,7 +36,7 @@ class VehicleIntegrationTest : IntegrationTest() {
 
         val requestDto = CreateVehicleRequestDTO(
             clientId = clientId,
-            plate = "ABC-1234",
+            plate = "ABC1234",
             brand = "Toyota",
             model = "Corolla",
             year = 2024
@@ -46,7 +46,7 @@ class VehicleIntegrationTest : IntegrationTest() {
         assertEquals(201, createVehicleResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val createdVehicle = vehicleRepository.findById(UUID.fromString(createVehicleResponse.body().id))!!
-        assertEquals(requestDto.plate, createdVehicle.plate)
+        assertEquals(requestDto.plate, createdVehicle.plate.value)
         assertEquals(requestDto.brand, createdVehicle.brand)
         assertEquals(requestDto.model, createdVehicle.model)
         assertEquals(requestDto.year, createdVehicle.year)
@@ -61,7 +61,7 @@ class VehicleIntegrationTest : IntegrationTest() {
 
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
-            plate = "XYZ-5678",
+            plate = "XYZ5678",
             brand = "Honda",
             model = "Civic",
             year = 2023
@@ -75,7 +75,7 @@ class VehicleIntegrationTest : IntegrationTest() {
         assertEquals(200, getResponse.statusCode(), "HTTP status code must be 200 OK")
 
         val fetchedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))!!
-        assertEquals(createRequestDto.plate, fetchedVehicle.plate)
+        assertEquals(createRequestDto.plate, fetchedVehicle.plate.value)
         assertEquals(createRequestDto.brand, fetchedVehicle.brand)
         assertEquals(createRequestDto.model, fetchedVehicle.model)
         assertEquals(createRequestDto.year, fetchedVehicle.year)
@@ -102,7 +102,7 @@ class VehicleIntegrationTest : IntegrationTest() {
         val vehicleId = createResponse.body().id
         val updateRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
-            plate = "DEF-9012",
+            plate = "DEF9012",
             brand = "Ford",
             model = "Focus Updated",
             year = 2022
@@ -112,7 +112,7 @@ class VehicleIntegrationTest : IntegrationTest() {
         assertEquals(200, updateResponse.statusCode(), "HTTP status code must be 200 OK")
 
         val updatedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))!!
-        assertEquals(updateRequestDto.plate, updatedVehicle.plate)
+        assertEquals(updateRequestDto.plate, updatedVehicle.plate.value)
         assertEquals(updateRequestDto.brand, updatedVehicle.brand)
         assertEquals(updateRequestDto.model, updatedVehicle.model)
         assertEquals(updateRequestDto.year, updatedVehicle.year)

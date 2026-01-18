@@ -1,3 +1,6 @@
+application:
+  profile: test
+
 database:
   maximumPoolSize: 6
 

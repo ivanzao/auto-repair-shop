@@ -23,7 +23,7 @@ class UserIntegrationTest : IntegrationTest() {
             name = "Fulano",
             document = "12345678900",
             email = "fulano@example.com",
-            contact = "+55 11 99999-9999",
+            contact = "11999999999",
             password = "password123",
             role = User.Role.ADMIN,
         )
@@ -33,9 +33,9 @@ class UserIntegrationTest : IntegrationTest() {
 
         val createdUser = userRepository.findById(UUID.fromString(createUserResponse.body().id))!!
         assertEquals(requestDto.name, createdUser.name)
-        assertEquals(requestDto.document, createdUser.document)
-        assertEquals(requestDto.email, createdUser.email)
-        assertEquals(requestDto.contact, createdUser.contact)
+        assertEquals(requestDto.document, createdUser.document.value)
+        assertEquals(requestDto.email, createdUser.email.value)
+        assertEquals(requestDto.contact, createdUser.contact.value)
         assertEquals(requestDto.role, createdUser.role)
     }
 }

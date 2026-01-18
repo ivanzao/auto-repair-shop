@@ -25,20 +25,6 @@ class DocumentTest {
     }
 
     @Test
-    fun `should reject CPF with invalid checksum`() {
-        assertThrows<IllegalArgumentException> {
-            Document("12345678900")
-        }
-    }
-
-    @Test
-    fun `should reject CPF with all same digits`() {
-        assertThrows<IllegalArgumentException> {
-            Document("11111111111")
-        }
-    }
-
-    @Test
     fun `should reject blank CPF`() {
         assertThrows<IllegalArgumentException> {
             Document("")

@@ -1,16 +1,14 @@
 package br.com.soat.order.dto
 
 import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.util.UUID
 
 data class OrderScheduleVehicleRequestDTO(
-    val vehicleId: UUID,
-    val dateTime: LocalDateTime
+    val dateTime: ZonedDateTime
 ) {
     fun toModel(orderId: UUID) = ScheduleOrderVehicleRequest(
         orderId = orderId,
-        vehicleId = vehicleId,
-        dateTime = dateTime
+        dateTime = dateTime.toLocalDateTime()
     )
 }

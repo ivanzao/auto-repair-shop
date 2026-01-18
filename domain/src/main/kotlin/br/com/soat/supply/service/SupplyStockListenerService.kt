@@ -6,7 +6,7 @@ import br.com.soat.order.repository.OrderRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.model.Supply
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.supply.model.event.OrderSuppliesReservedEvent
 import java.util.UUID
 
@@ -22,18 +22,18 @@ class SupplyStockListenerService(
         val order = orderRepository.findById(orderId)
             ?: throw IllegalArgumentException("Order not found $orderId")
 
-        val supplyRequests = order.getRequiredSupplyRequests()
-        val supplies = supplyRepository.findAllByIds(supplyRequests.map { it.supplyId })
+        val supplyRequirements = order.getSupplyRequirements()
+        val supplies = supplyRepository.findAllByIds(supplyRequirements.map { it.supplyId })
 
-        validateRequestedSuppliesExists(supplies, supplyRequests)
+        validateRequestedSuppliesExists(supplies, supplyRequirements)
 
         val updatedSupplies = supplies.map { supply ->
-            val supplyRequest = supplyRequests.single { request -> request.supplyId == supply.id }
-            if (supplyRequest.quantity > supply.quantityInStock) {
+            val supplyRequirement = supplyRequirements.single { request -> request.supplyId == supply.id }
+            if (supplyRequirement.quantity > supply.quantityInStock) {
                 throw IllegalStateException("Insufficient stock for supply ${supply.name}")
             }
 
-            supply.copy(quantityInStock = supply.quantityInStock - supplyRequest.quantity)
+            supply.copy(quantityInStock = supply.quantityInStock - supplyRequirement.quantity)
         }
 
         val event = tx.inTransaction {
@@ -44,8 +44,8 @@ class SupplyStockListenerService(
         eventPublisher.publish(event)
     }
 
-    private fun validateRequestedSuppliesExists(foundSupplies: List<Supply>, supplyRequests: List<SupplyRequest>) {
-        supplyRequests.map { it.supplyId }
+    private fun validateRequestedSuppliesExists(foundSupplies: List<Supply>, supplyRequirements: List<SupplyRequirement>) {
+        supplyRequirements.map { it.supplyId }
             .filter { it !in foundSupplies.map { service -> service.id } }
             .takeIf { it.isNotEmpty() }
             ?.let { throw IllegalArgumentException("Requested services not found: ${it.joinToString(", ")}") }

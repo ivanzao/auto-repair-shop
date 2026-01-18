@@ -6,7 +6,7 @@ import br.com.soat.order.model.Order
 import br.com.soat.service.Services
 import br.com.soat.order.model.OrderService
 import br.com.soat.supply.Supplies
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.Users
 import br.com.soat.user.toUser
 import br.com.soat.vehicle.Vehicles
@@ -56,7 +56,7 @@ object OrderSupplies : Table("order_supplies") {
 
 fun ResultRow.toOrder(
     services: List<OrderService>,
-    supplies: List<SupplyRequest>
+    supplies: List<SupplyRequirement>
 ) = Order(
     id = this[Orders.id],
     createdAt = this[Orders.createdAt].toJavaLocalDateTime(),

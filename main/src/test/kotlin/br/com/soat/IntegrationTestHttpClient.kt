@@ -5,13 +5,14 @@ import br.com.soat.auth.dto.AuthenticateUserResponseDTO
 import br.com.soat.auth.dto.RefreshTokenRequestDTO
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
 import br.com.soat.customer.dto.CustomerResponseDTO
-import br.com.soat.order.dto.OrderQuoteApprovalRequestDTO
 import br.com.soat.order.dto.CreateOrderRequestDTO
 import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderResponseDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.OrderStatusResponseDTO
 import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
+import br.com.soat.service.dto.CreateServiceRequestDTO
+import br.com.soat.service.dto.ServiceResponseDTO
 import br.com.soat.supply.dto.CreateSupplyRequestDTO
 import br.com.soat.supply.dto.SupplyResponseDTO
 import br.com.soat.user.dto.CreateUserRequestDTO
@@ -86,9 +87,17 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return post("/orders/$orderId/schedule-delivery", body, bearerToken)
     }
 
-    fun approveOrder(dto: OrderQuoteApprovalRequestDTO): HttpResponse<*> {
-        val body = mapper.writeValueAsString(dto)
-        return post("/orders/quote/approve", body)
+    fun approveOrder(token: String): HttpResponse<*> {
+        return get("/orders/quote/approve?token=$token")
+    }
+
+    fun declineOrder(token: String): HttpResponse<*> {
+        return get("/orders/quote/decline?token=$token")
+    }
+
+    fun completeOrder(orderId: String, bearerToken: String): HttpResponse<OrderResponseDTO> {
+        val response = post("/orders/$orderId/complete", "{}", bearerToken)
+        return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
     fun login(dto: AuthenticateUserRequestDTO): HttpResponse<AuthenticateUserResponseDTO> {
@@ -164,6 +173,29 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
 
     fun deleteSupply(supplyId: UUID, bearerToken: String): HttpResponse<String> {
         return delete("/supplies/$supplyId", bearerToken)
+    }
+
+    fun createService(dto: CreateServiceRequestDTO, bearerToken: String): HttpResponse<ServiceResponseDTO> {
+        val body = mapper.writeValueAsString(dto)
+        val response = post("/services", body, bearerToken)
+        return SerializedHttpResponse(response, mapper.readValue(response.body()))
+    }
+
+    fun getService(serviceId: UUID, bearerToken: String): HttpResponse<String> {
+        return get("/services/$serviceId", bearerToken)
+    }
+
+    fun getAllServices(bearerToken: String): HttpResponse<String> {
+        return get("/services", bearerToken)
+    }
+
+    fun updateService(serviceId: UUID, dto: CreateServiceRequestDTO, bearerToken: String): HttpResponse<String> {
+        val body = mapper.writeValueAsString(dto)
+        return put("/services/$serviceId", body, bearerToken)
+    }
+
+    fun deleteService(serviceId: UUID, bearerToken: String): HttpResponse<String> {
+        return delete("/services/$serviceId", bearerToken)
     }
 
     private fun post(path: String, body: String, bearerToken: String? = null): HttpResponse<String> {

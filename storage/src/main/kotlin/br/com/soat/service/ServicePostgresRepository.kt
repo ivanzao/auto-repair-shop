@@ -2,7 +2,7 @@ package br.com.soat.service
 
 import br.com.soat.order.model.OrderService
 import br.com.soat.order.repository.OrderServiceRepository
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -55,9 +55,26 @@ class ServicePostgresRepository : OrderServiceRepository {
         val supplies = ServiceSupplies
             .selectAll()
             .where { ServiceSupplies.serviceId eq id }
-            .map { SupplyRequest(it[ServiceSupplies.supplyId], it[ServiceSupplies.quantity]) }
+            .map { SupplyRequirement(it[ServiceSupplies.supplyId], it[ServiceSupplies.quantity]) }
 
         serviceRow.toService(supplies)
+    }
+
+    override fun findAll(): List<OrderService> = transaction {
+        val servicesRows = Services.selectAll().toList()
+
+        val serviceIds = servicesRows.map { it[Services.id] }
+
+        val allSupplies = ServiceSupplies
+            .selectAll()
+            .where { ServiceSupplies.serviceId inList serviceIds }
+            .map { it[ServiceSupplies.serviceId] to SupplyRequirement(it[ServiceSupplies.supplyId], it[ServiceSupplies.quantity]) }
+            .groupBy({ it.first }, { it.second })
+
+        servicesRows.map { row ->
+            val serviceId = row[Services.id]
+            row.toService(allSupplies[serviceId] ?: emptyList())
+        }
     }
 
     override fun findAllByIds(servicesIds: List<UUID>): List<OrderService> = transaction {
@@ -68,13 +85,18 @@ class ServicePostgresRepository : OrderServiceRepository {
         val allSupplies = ServiceSupplies
             .selectAll()
             .where { ServiceSupplies.serviceId inList servicesIds }
-            .map { it[ServiceSupplies.serviceId] to SupplyRequest(it[ServiceSupplies.supplyId], it[ServiceSupplies.quantity]) }
+            .map { it[ServiceSupplies.serviceId] to SupplyRequirement(it[ServiceSupplies.supplyId], it[ServiceSupplies.quantity]) }
             .groupBy({ it.first }, { it.second })
 
         servicesRows.map { row ->
             val serviceId = row[Services.id]
             row.toService(allSupplies[serviceId] ?: emptyList())
         }
+    }
+
+    override fun delete(id: UUID): Boolean = transaction {
+        ServiceSupplies.deleteWhere { serviceId eq id }
+        Services.deleteWhere { Services.id eq id } > 0
     }
 
     private fun insertSupplies(service: OrderService) {

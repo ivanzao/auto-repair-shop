@@ -24,7 +24,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             name = "Beltrano",
             document = "98765432100",
             email = "beltrano@example.com",
-            contact = "+55 11 88888-8888"
+            contact = "11988888888"
         )
 
         val createCustomerResponse = http.createCustomer(requestDto, bearerToken)
@@ -32,9 +32,9 @@ class CustomerIntegrationTest : IntegrationTest() {
 
         val createdCustomer = customerRepository.findById(UUID.fromString(createCustomerResponse.body().id))!!
         assertEquals(requestDto.name, createdCustomer.name)
-        assertEquals(requestDto.document, createdCustomer.document)
-        assertEquals(requestDto.email, createdCustomer.email)
-        assertEquals(requestDto.contact, createdCustomer.contact)
+        assertEquals(requestDto.document, createdCustomer.document.value)
+        assertEquals(requestDto.email, createdCustomer.email.value)
+        assertEquals(requestDto.contact, createdCustomer.contact.value)
     }
 
     @Test
@@ -46,7 +46,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             name = "Fulano",
             document = "12345678900",
             email = "fulano@example.com",
-            contact = "+55 11 99999-9999"
+            contact = "11999999999"
         )
 
         val createResponse = http.createCustomer(createRequestDto, bearerToken)
@@ -58,9 +58,9 @@ class CustomerIntegrationTest : IntegrationTest() {
 
         val fetchedCustomer = customerRepository.findById(UUID.fromString(customerId))!!
         assertEquals(createRequestDto.name, fetchedCustomer.name)
-        assertEquals(createRequestDto.document, fetchedCustomer.document)
-        assertEquals(createRequestDto.email, fetchedCustomer.email)
-        assertEquals(createRequestDto.contact, fetchedCustomer.contact)
+        assertEquals(createRequestDto.document, fetchedCustomer.document.value)
+        assertEquals(createRequestDto.email, fetchedCustomer.email.value)
+        assertEquals(createRequestDto.contact, fetchedCustomer.contact.value)
     }
 
     @Test
@@ -72,7 +72,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             name = "Ciclano",
             document = "11122233344",
             email = "ciclano@example.com",
-            contact = "+55 11 77777-7777"
+            contact = "11 97777-7777"
         )
 
         val createResponse = http.createCustomer(createRequestDto, bearerToken)
@@ -83,7 +83,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             name = "Ciclano Updated",
             document = "11122233344",
             email = "ciclano_updated@example.com",
-            contact = "+55 11 77777-7777"
+            contact = "11977777777"
         )
 
         val updateResponse = http.updateCustomer(customerId, updateRequestDto, bearerToken)
@@ -91,9 +91,9 @@ class CustomerIntegrationTest : IntegrationTest() {
 
         val updatedCustomer = customerRepository.findById(UUID.fromString(customerId))!!
         assertEquals(updateRequestDto.name, updatedCustomer.name)
-        assertEquals(updateRequestDto.document, updatedCustomer.document)
-        assertEquals(updateRequestDto.email, updatedCustomer.email)
-        assertEquals(updateRequestDto.contact, updatedCustomer.contact)
+        assertEquals(updateRequestDto.document, updatedCustomer.document.value)
+        assertEquals(updateRequestDto.email, updatedCustomer.email.value)
+        assertEquals(updateRequestDto.contact, updatedCustomer.contact.value)
     }
 
     @Test
@@ -105,7 +105,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             name = "To Delete",
             document = "00000000000",
             email = "delete@example.com",
-            contact = "+55 11 00000-0000"
+            contact = "11 90000-0000"
         )
 
         val createResponse = http.createCustomer(createRequestDto, bearerToken)

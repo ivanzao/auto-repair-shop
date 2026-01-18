@@ -1,7 +1,7 @@
 package br.com.soat.config
 
 class Config(
-    private val flat: Map<String, Any?>
+    private val flat: MutableMap<String, Any?>
 ) {
 
     fun getString(key: String, defaultValue: String? = null): String =
@@ -28,7 +28,9 @@ class Config(
             }
         }
 
-    fun size() = flat.size
+    fun put(key: String, value: Any?) {
+        flat[key] = value
+    }
 
     private fun <T> get(key: String, defaultValue: T?, transformerFunc: (Any) -> T): T =
         flat[key]?.let { transformerFunc(it) }

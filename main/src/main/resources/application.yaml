@@ -1,10 +1,14 @@
+application:
+  url: http://localhost:8080
+  profile: dev
+
 server:
   port: 8080
 
 database:
   driverClassName: org.postgresql.Driver
-  url: jdbc:postgresql://localhost:5432/postgres
-  username: postgres
+  url: jdbc:postgresql://localhost:5432/auto-repair-shop
+  username: app
   password: test
   maximumPoolSize: 6
 
@@ -15,3 +19,6 @@ security:
     cost: 10  # BCrypt cost factor (10-12 recommended for production)
   authentication:
     expiresIn: 60  # Token expiration time in minutes
+
+mailersend:
+  token: "mlsn.ef6a99eacf439ca5978bcd28822e29f7f663053fafe47f66ed6995923d51b6bd"

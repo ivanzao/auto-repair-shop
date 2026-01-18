@@ -17,28 +17,14 @@ sonar {
         property("sonar.host.url", System.getenv("SONAR_HOST_URL") ?: "http://localhost:9000")
         property("sonar.token", System.getenv("SONAR_TOKEN") ?: "")
 
-        // Coverage settings - use aggregated report
-        property("sonar.coverage.jacoco.xmlReportPaths",
-            "${project.layout.buildDirectory.get()}/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml")
-
-        // Source and binary directories for all modules
-        val allSources = subprojects.joinToString(",") { "${it.projectDir}/src/main/kotlin" }
-        val allTests = subprojects.joinToString(",") { "${it.projectDir}/src/test/kotlin" }
-        val allBinaries = subprojects.joinToString(",") { "${it.projectDir}/build/classes/kotlin/main" }
-
-        property("sonar.sources", allSources)
-        property("sonar.tests", allTests)
-        property("sonar.java.binaries", allBinaries)
-
         // Exclude generated code and test fixtures
         property("sonar.exclusions", "**/build/**,**/*Fixtures.kt")
         property("sonar.test.exclusions", "**/build/**")
+        property("sonar.coverage.exclusions", "**/main/src/main/kotlin/**,**/KtorHttpServer.kt,**/*DTO.kt")
 
-        // Language settings
-        property("sonar.language", "kotlin")
-        property("sonar.kotlin.source.version", "2.2")
-        property("sonar.java.source", "21")
-        property("sonar.java.target", "21")
+        // Use aggregated report that combines all .exec files with all classes
+        property("sonar.coverage.jacoco.xmlReportPaths",
+            "${layout.buildDirectory.get()}/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml")
     }
 }
 
@@ -48,6 +34,15 @@ subprojects {
 
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "jacoco")
+    apply(plugin = "org.sonarqube")
+
+    // Each subproject uses the root aggregated report for coverage
+    sonar {
+        properties {
+            property("sonar.coverage.jacoco.xmlReportPaths",
+                "${rootProject.layout.buildDirectory.get()}/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml")
+        }
+    }
 
     repositories {
         mavenCentral()

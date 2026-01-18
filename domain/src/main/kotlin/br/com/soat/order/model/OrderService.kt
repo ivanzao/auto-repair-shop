@@ -1,6 +1,6 @@
 package br.com.soat.order.model
 
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
@@ -11,7 +11,7 @@ data class OrderService(
     val modifiedAt: LocalDateTime = LocalDateTime.now(),
     val version: Int = 0,
 
-    val requiredSupplies: List<SupplyRequest> = emptyList(),
+    val requiredSupplies: List<SupplyRequirement> = emptyList(),
     val name: String,
     val description: String?,
     val price: BigDecimal,

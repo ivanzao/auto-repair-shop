@@ -82,7 +82,7 @@ class AuthenticationIntegrationTest : IntegrationTest() {
             name = "Test User",
             document = "12345678900",
             email = email,
-            contact = "+55 11 99999-9999",
+            contact = "11 99999-9999",
             password = password,
             role = User.Role.ADMIN
         )

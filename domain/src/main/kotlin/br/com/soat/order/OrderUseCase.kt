@@ -6,7 +6,9 @@ import br.com.soat.event.repository.EventRepository
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderSchedule
 import br.com.soat.order.model.OrderService
+import br.com.soat.order.model.event.OrderCompletedEvent
 import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
+import br.com.soat.order.model.event.OrderInProgressEvent
 import br.com.soat.order.repository.OrderApprovalTokenRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
@@ -97,7 +99,7 @@ class OrderUseCase(
         validateRequestedServicesExists(services, request.servicesIds)
 
         val orderWithServices = order.addServices(services)
-            .withExtraSupplyRequests(request.extraSuppliesRequests)
+            .addSupplyRequirements(request.extraSuppliesRequests)
 
         val (updatedOrder, event) = tx.inTransaction {
             val order = orderRepository.update(orderWithServices)
@@ -114,6 +116,21 @@ class OrderUseCase(
         return orderRepository.findById(orderId)
     }
 
+    fun complete(orderId: UUID): Order {
+        val order = orderRepository.findById(orderId)
+            ?: throw IllegalArgumentException("Order not found $orderId")
+
+        val (savedOrder, event) = tx.inTransaction {
+            val order = orderRepository.update(order.completed())
+            val event = eventRepository.save(OrderCompletedEvent(orderId = order.id))
+            order to event
+        }
+
+        eventPublisher.publish(event)
+
+        return savedOrder
+    }
+
     fun approveQuote(approvalTokenId: UUID) {
         val approvalToken = orderApprovalTokenRepository.findById(approvalTokenId)
             ?: throw IllegalArgumentException("Approval token not found $approvalTokenId")
@@ -125,10 +142,13 @@ class OrderUseCase(
         val order = orderRepository.findById(approvalToken.orderId)
             ?: throw IllegalArgumentException("Order not found ${approvalToken.orderId}")
 
-        tx.inTransaction {
-            orderRepository.update(order.inProgress())
+        val event = tx.inTransaction {
             orderApprovalTokenRepository.update(approvalToken.markAsUsed())
+            orderRepository.update(order.inProgress())
+            eventRepository.save(OrderInProgressEvent(orderId = order.id))
         }
+
+        eventPublisher.publish(event)
     }
 
     fun declineQuote(approvalTokenId: UUID) {

@@ -5,27 +5,31 @@ import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.customer.createCustomer
 import br.com.soat.mail.EmailService
 import br.com.soat.mail.model.OrderQuoteApprovalEmailInput
-import br.com.soat.order.dto.OrderQuoteApprovalRequestDTO
 import br.com.soat.order.dto.CreateOrderRequestDTO
 import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
-import br.com.soat.order.dto.SupplyRequestDTO
+import br.com.soat.order.dto.SupplyRequirementDTO
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderApprovalToken
+import br.com.soat.order.model.OrderExecutionMetric
 import br.com.soat.order.model.OrderSchedule
 import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
 import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.createSupply
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.createUser
 import br.com.soat.vehicle.createVehicle
 import br.com.soat.waitFor
 import io.mockk.every
 import io.mockk.slot
 import java.time.LocalDateTime
+import java.time.ZoneOffset.UTC
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -37,6 +41,7 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
     private val orderRepository: OrderRepository by lazy { get<OrderRepository>() }
     private val orderScheduleRepository: OrderScheduleRepository by lazy { get<OrderScheduleRepository>() }
     private val orderApprovalTokenRepository: OrderApprovalTokenRepository by lazy { get<OrderApprovalTokenRepository>() }
+    private val orderExecutionMetricRepository: OrderExecutionMetricRepository by lazy { get<OrderExecutionMetricRepository>() }
     private val emailService: EmailService by lazy { get<EmailService>() }
     private val supplyRepository: SupplyRepository by lazy { get<SupplyRepository>() }
 
@@ -47,7 +52,7 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
         val supply = createSupply(quantityInStock = 10)
-        val service = createService(requiredSupplies = listOf(SupplyRequest(supply.id, 5)))
+        val service = createService(requiredSupplies = listOf(SupplyRequirement(supply.id, 5)))
 
         val bearerToken = tokenProvider.generate(attendant, LocalDateTime.now().plusDays(1))
 
@@ -81,16 +86,15 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
 
         // create and validate order schedule delivery
         val scheduleDeliveryRequest = OrderScheduleVehicleRequestDTO(
-            vehicleId = vehicle.id,
-            dateTime = LocalDateTime.now().plusHours(2)
+            dateTime = LocalDateTime.now().atZone(UTC).plusHours(2)
         )
         val scheduleDeliveryResponse = http.scheduleDelivery(createdOrder.id.toString(), scheduleDeliveryRequest, bearerToken)
         assertEquals(200, scheduleDeliveryResponse.statusCode())
 
         val createdOrderScheduleDelivery = orderScheduleRepository.findAllByOrderId(createdOrder.id).single()
         assertEquals(
-            scheduleDeliveryRequest.dateTime.truncatedTo(ChronoUnit.SECONDS),
-            createdOrderScheduleDelivery.dateTime.truncatedTo(ChronoUnit.SECONDS)
+            scheduleDeliveryRequest.dateTime.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+            createdOrderScheduleDelivery.dateTime.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         )
         assertEquals(OrderSchedule.Type.DELIVERY, createdOrderScheduleDelivery.type)
 
@@ -111,7 +115,7 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         // finish diagnosis and reserve supplies
         val finishDiagnosisRequest = FinishOrderDiagnosisRequestDTO(
             servicesIds = listOf(service.id),
-            extraSuppliesRequests = listOf(SupplyRequestDTO(supplyId = supply.id, quantity = 1))
+            extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 1))
         )
         val orderDiagnosedResponse = http.finishDiagnosis(orderInDiagnosis.id.toString(), finishDiagnosisRequest, bearerToken)
         assertEquals(200, orderDiagnosedResponse.statusCode())
@@ -147,13 +151,12 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         // assert email was sent
         assertEquals(approvalToken?.id.toString(), emailInputSlot.captured.callbackToken)
         assertEquals(customer.name, emailInputSlot.captured.customerName)
-        assertEquals(customer.email, emailInputSlot.captured.customerEmail)
+        assertEquals(customer.email.value, emailInputSlot.captured.customerEmail)
         assertEquals(orderWaitingApproval!!.services.map { it.name }, emailInputSlot.captured.services.map { it.name })
         assertEquals(listOf(OrderQuoteApprovalEmailInput.Supply(supply.name, 6, supply.price)), emailInputSlot.captured.supplies)
 
         // approve order by token
-        val approveOrderRequest = OrderQuoteApprovalRequestDTO(approvalToken = approvalToken!!.id)
-        val approveOrderResponse = http.approveOrder(approveOrderRequest)
+        val approveOrderResponse = http.approveOrder(approvalToken!!.id.toString())
         assertEquals(200, approveOrderResponse.statusCode())
 
         // assert order status is IN_PROGRESS
@@ -169,5 +172,35 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         val usedApprovalToken = orderApprovalTokenRepository.findById(approvalToken!!.id)!!
         assertEquals(false, usedApprovalToken.isValid())
         assertEquals(true, usedApprovalToken.usedAt != null)
+
+        // assert execution metric was created with inProgressAt
+        var executionMetric: OrderExecutionMetric? = null
+        waitFor {
+            executionMetric = orderExecutionMetricRepository.findByOrderId(orderInProgress.id)
+            executionMetric != null
+        }
+        assertNotNull(executionMetric)
+        assertNotNull(executionMetric!!.inProgressAt)
+        assertEquals(null, executionMetric!!.completedAt)
+
+        // complete order
+        val completeOrderResponse = http.completeOrder(orderInProgress.id.toString(), bearerToken)
+        assertEquals(200, completeOrderResponse.statusCode())
+
+        // assert order status is COMPLETED
+        val orderCompleted = orderRepository.findById(orderInProgress.id)!!
+        assertEquals(Order.Status.COMPLETED, orderCompleted.status)
+
+        // validate public status endpoint shows COMPLETED
+        val statusAfterCompletion = http.getOrderStatus(orderCompleted.id.toString())
+        assertEquals(200, statusAfterCompletion.statusCode())
+        assertEquals(Order.Status.COMPLETED, statusAfterCompletion.body().status)
+
+        // assert execution metric was updated with completedAt
+        waitFor {
+            executionMetric = orderExecutionMetricRepository.findByOrderId(orderCompleted.id)
+            executionMetric?.completedAt != null
+        }
+        assertNotNull(executionMetric!!.completedAt)
     }
 }

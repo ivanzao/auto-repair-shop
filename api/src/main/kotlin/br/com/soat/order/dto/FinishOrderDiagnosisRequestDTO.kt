@@ -4,5 +4,5 @@ import java.util.UUID
 
 data class FinishOrderDiagnosisRequestDTO(
     val servicesIds: List<UUID>,
-    val extraSuppliesRequests: List<SupplyRequestDTO>,
+    val extraSuppliesRequests: List<SupplyRequirementDTO>,
 )

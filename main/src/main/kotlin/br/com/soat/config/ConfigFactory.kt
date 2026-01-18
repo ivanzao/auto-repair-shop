@@ -19,8 +19,8 @@ private fun buildConfig(raw: Map<String, Any?>): Config {
     val flat = flatten(raw)
         .mapValues { (k, v) -> searchAsEnvironmentVariable(k) ?: v }
 
-    return Config(flat).also {
-        logger.info("Loaded ${it.size()} configs from application.yaml")
+    return Config(flat as MutableMap).also {
+        logger.info("Loaded configs from application.yaml")
     }
 }
 

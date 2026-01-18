@@ -6,12 +6,13 @@ import br.com.soat.order.model.Order.Status
 import br.com.soat.order.model.OrderService
 import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
-import java.time.LocalDateTime
+import java.time.ZoneOffset.UTC
+import java.time.ZonedDateTime
 import java.util.UUID
 
 data class OrderResponseDTO(
     val id: UUID,
-    val createdAt: LocalDateTime,
+    val createdAt: ZonedDateTime,
 
     val status: Status,
 
@@ -26,7 +27,7 @@ data class OrderResponseDTO(
     companion object {
         fun from(order: Order) = OrderResponseDTO(
             id = order.id,
-            createdAt = order.createdAt,
+            createdAt = order.createdAt.atZone(UTC),
             status = order.status,
             customer = order.customer,
             vehicle = order.vehicle,

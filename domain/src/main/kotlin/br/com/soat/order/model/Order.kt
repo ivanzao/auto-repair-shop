@@ -1,7 +1,7 @@
 package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
@@ -21,7 +21,7 @@ data class Order(
     val vehicle: Vehicle,
     val attendant: User,
     val services: List<OrderService> = emptyList(),
-    val extraSupplies: List<SupplyRequest> = emptyList(),
+    val extraSupplies: List<SupplyRequirement> = emptyList(),
 
     val description: String,
     val technician: String? = null,
@@ -35,13 +35,13 @@ data class Order(
 
     fun addServices(services: List<OrderService>) = copy(services = this.services + services)
 
-    fun withExtraSupplyRequests(extraSupplies: List<SupplyRequest>) = copy(extraSupplies = extraSupplies)
+    fun addSupplyRequirements(supplyRequirements: List<SupplyRequirement>) = copy(extraSupplies = supplyRequirements)
 
-    fun getRequiredSupplyRequests(): List<SupplyRequest> {
+    fun getSupplyRequirements(): List<SupplyRequirement> {
         val serviceSupplies = services.flatMap { it.requiredSupplies }
         return (serviceSupplies + extraSupplies).groupingBy { it.supplyId }
-            .fold(0) { acc, supplyRequest -> acc + supplyRequest.quantity }
-            .map { (supplyId, totalQuantity) -> SupplyRequest(supplyId, totalQuantity) }
+            .fold(0) { acc, requirement -> acc + requirement.quantity }
+            .map { (supplyId, totalQuantity) -> SupplyRequirement(supplyId, totalQuantity) }
     }
 
     enum class Status {

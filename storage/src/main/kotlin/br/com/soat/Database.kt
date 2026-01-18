@@ -1,18 +1,19 @@
 package br.com.soat
 
+import br.com.soat.config.Config
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import org.jetbrains.exposed.sql.Database
-import org.flywaydb.core.Flyway
 import javax.sql.DataSource
+import org.flywaydb.core.Flyway
+import org.jetbrains.exposed.sql.Database
 
-fun connectToDatabase(params: DatabaseConnectionParams): DataSource {
+fun connectToDatabase(config: Config): DataSource {
     val datasource = HikariDataSource(HikariConfig().apply {
-        jdbcUrl = params.jdbcUrl
-        driverClassName = params.driverClassName
-        username = params.username
-        password = params.password
-        maximumPoolSize = params.maximumPoolSize
+        jdbcUrl = config.getString("database.url")
+        driverClassName = config.getString("database.driverClassName")
+        username = config.getString("database.username")
+        password = config.getString("database.password")
+        maximumPoolSize = config.getInt("database.maximumPoolSize")
         isReadOnly = false
         transactionIsolation = "TRANSACTION_SERIALIZABLE"
     })
@@ -27,11 +28,3 @@ fun connectToDatabase(params: DatabaseConnectionParams): DataSource {
 
     return datasource
 }
-
-data class DatabaseConnectionParams(
-    val jdbcUrl: String,
-    val driverClassName: String,
-    val username: String,
-    val password: String,
-    val maximumPoolSize: Int
-)

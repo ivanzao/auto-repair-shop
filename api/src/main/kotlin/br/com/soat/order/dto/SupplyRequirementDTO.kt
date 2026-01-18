@@ -1,14 +1,14 @@
 package br.com.soat.order.dto
 
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import java.util.UUID
 
-data class SupplyRequestDTO(
+data class SupplyRequirementDTO(
     val supplyId: UUID,
     val quantity: Int,
 ) {
 
-    fun toModel() = SupplyRequest(
+    fun toModel() = SupplyRequirement(
         supplyId = supplyId,
         quantity = quantity
     )

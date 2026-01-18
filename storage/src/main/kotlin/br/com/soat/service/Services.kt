@@ -2,7 +2,7 @@ package br.com.soat.service
 
 import br.com.soat.order.model.OrderService
 import br.com.soat.supply.Supplies
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
@@ -33,7 +33,7 @@ object ServiceSupplies : Table("service_supplies") {
     }
 }
 
-fun ResultRow.toService(supplies: List<SupplyRequest>): OrderService = OrderService(
+fun ResultRow.toService(supplies: List<SupplyRequirement>): OrderService = OrderService(
     id = this[Services.id],
     createdAt = this[Services.createdAt].toJavaLocalDateTime(),
     modifiedAt = this[Services.modifiedAt].toJavaLocalDateTime(),

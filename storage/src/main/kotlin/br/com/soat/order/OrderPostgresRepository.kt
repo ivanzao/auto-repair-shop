@@ -5,7 +5,7 @@ import br.com.soat.order.model.Order
 import br.com.soat.order.repository.OrderServiceRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.service.Services
-import br.com.soat.supply.model.SupplyRequest
+import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.Users
 import br.com.soat.vehicle.Vehicles
 import java.util.UUID
@@ -43,7 +43,7 @@ class OrderPostgresRepository(
         val supplies = OrderSupplies
             .selectAll()
             .where { OrderSupplies.orderId eq id }
-            .map { SupplyRequest(it[OrderSupplies.supplyId], it[OrderSupplies.quantity]) }
+            .map { SupplyRequirement(it[OrderSupplies.supplyId], it[OrderSupplies.quantity]) }
 
         orderRow.toOrder(services, supplies)
     }

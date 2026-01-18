@@ -5,8 +5,11 @@ import br.com.soat.command.repository.CommandRepository
 import br.com.soat.order.command.SendQuoteToClientCommand
 import br.com.soat.mail.EmailService
 import br.com.soat.mail.model.OrderQuoteApprovalEmailInput
+import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderApprovalToken
+import br.com.soat.order.model.OrderExecutionMetric
 import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.supply.SupplyRepository
@@ -20,6 +23,7 @@ class OrderListenerUseCase(
     private val commandPublisher: CommandPublisher,
     private val emailService: EmailService,
     private val orderApprovalTokenRepository: OrderApprovalTokenRepository,
+    private val orderExecutionMetricRepository: OrderExecutionMetricRepository,
     private val tx: RepositoryTransactionHandler
 ) {
 
@@ -46,7 +50,7 @@ class OrderListenerUseCase(
             )
         )
 
-        val requiredSupplies = order.getRequiredSupplyRequests()
+        val requiredSupplies = order.getSupplyRequirements()
         val supplies = supplyRepository.findAllByIds(requiredSupplies.map { it.supplyId })
         val email = OrderQuoteApprovalEmailInput(
             callbackToken = approvalToken.id.toString(),
@@ -58,12 +62,34 @@ class OrderListenerUseCase(
                     name = it.name,
                     price = it.price,
                     quantity = requiredSupplies.single {
-                        supplyRequest -> supplyRequest.supplyId == it.id
+                        requirement -> requirement.supplyId == it.id
                     }.quantity,
                 )
             }
         )
 
         emailService.sendOrderQuoteApprovalEmail(email)
+    }
+
+    fun registerExecutionTimeMetric(orderId: UUID, status: Order.Status) {
+        when (status) {
+            Order.Status.IN_PROGRESS -> {
+                orderExecutionMetricRepository.save(
+                    OrderExecutionMetric(
+                        orderId = orderId,
+                        inProgressAt = LocalDateTime.now()
+                    )
+                )
+            }
+            Order.Status.COMPLETED -> {
+                val existingMetric = orderExecutionMetricRepository.findByOrderId(orderId)
+                if (existingMetric != null) {
+                    orderExecutionMetricRepository.update(
+                        existingMetric.copy(completedAt = LocalDateTime.now())
+                    )
+                }
+            }
+            else -> { }
+        }
     }
 }

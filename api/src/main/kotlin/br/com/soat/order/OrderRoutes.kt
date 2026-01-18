@@ -1,6 +1,5 @@
 package br.com.soat.order
 
-import br.com.soat.order.dto.OrderQuoteApprovalRequestDTO
 import br.com.soat.order.dto.CreateOrderRequestDTO
 import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderResponseDTO
@@ -24,16 +23,18 @@ fun Application.orderRoutes(koin: Koin) {
     val orderUseCase = koin.inject<OrderUseCase>().value
 
     routing {
-        post("/orders/quote/approve") {
-            val request = call.receive<OrderQuoteApprovalRequestDTO>()
-            orderUseCase.approveQuote(request.approvalToken)
+        get("/orders/quote/approve") {
+            val token = call.parameters["token"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Token must be present")
+            orderUseCase.approveQuote(UUID.fromString(token))
 
             call.respond(HttpStatusCode.OK)
         }
 
-        post("/orders/quote/decline") {
-            val request = call.receive<OrderQuoteApprovalRequestDTO>()
-            orderUseCase.declineQuote(request.approvalToken)
+        get("/orders/quote/decline") {
+            val token = call.parameters["token"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Token must be present")
+            orderUseCase.declineQuote(UUID.fromString(token))
 
             call.respond(HttpStatusCode.OK)
         }
@@ -118,6 +119,16 @@ fun Application.orderRoutes(koin: Koin) {
                 orderUseCase.scheduleVehicleReturn(request.toModel(UUID.fromString(orderId)))
 
                 call.respond(HttpStatusCode.OK)
+            }
+
+            post("/orders/{id}/complete") {
+                val orderId = call.parameters["id"] ?: throw IllegalArgumentException("OrderId must be present")
+                val completedOrder = orderUseCase.complete(UUID.fromString(orderId))
+
+                call.respond(
+                    status = HttpStatusCode.OK,
+                    message = OrderResponseDTO.from(completedOrder)
+                )
             }
 
             get("/orders/{id}") {
