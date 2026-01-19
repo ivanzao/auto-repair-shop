@@ -5,25 +5,23 @@ import br.com.soat.customer.customerRoutes
 import br.com.soat.order.orderRoutes
 import br.com.soat.security.configureAuthentication
 import br.com.soat.service.serviceRoutes
+import br.com.soat.shared.dto.ErrorResponseDTO
 import br.com.soat.shared.dto.FieldError
 import br.com.soat.shared.dto.ValidationErrorDTO
 import br.com.soat.shared.dto.toErrorResponseDTO
-import br.com.soat.shared.model.ApplicationException
-import br.com.soat.shared.model.Error
-import com.fasterxml.jackson.databind.JsonMappingException
-import com.fasterxml.jackson.databind.exc.InvalidNullException
-import com.fasterxml.jackson.databind.exc.MismatchedInputException
-import com.fasterxml.jackson.databind.exc.ValueInstantiationException
+import br.com.soat.shared.exception.ApplicationException
 import br.com.soat.supply.supplyRoutes
 import br.com.soat.user.userRoutes
 import br.com.soat.vehicle.vehicleRoutes
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.exc.InvalidNullException
+import com.fasterxml.jackson.databind.exc.MismatchedInputException
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.datatype.jsr310.ser.ZonedDateTimeSerializer
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
@@ -35,11 +33,13 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.plugins.swagger.swaggerUI
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import io.ktor.server.plugins.swagger.swaggerUI
-import io.ktor.server.response.respond
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.TimeZone
 import org.koin.core.Koin
 
@@ -107,7 +107,7 @@ class KtorHttpServer(
     private fun Application.configureErrorHandling() {
         install(StatusPages) {
             exception<ApplicationException> { call, cause ->
-                call.respond(HttpStatusCode.UnprocessableEntity, cause.error.toErrorResponseDTO())
+                call.respond(HttpStatusCode.UnprocessableEntity, cause.toErrorResponseDTO())
             }
 
             exception<BadRequestException> { call, cause ->
@@ -117,7 +117,7 @@ class KtorHttpServer(
 
             exception<Throwable> { call, cause ->
                 val message = "${cause::class.simpleName}: ${cause.message}"
-                call.respond(HttpStatusCode.InternalServerError, Error.INTERNAL_SERVER_ERROR.toErrorResponseDTO(message))
+                call.respond(HttpStatusCode.InternalServerError, ErrorResponseDTO.internalServerError(message))
             }
         }
     }

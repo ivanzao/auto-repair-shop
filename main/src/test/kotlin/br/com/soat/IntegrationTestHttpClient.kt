@@ -104,6 +104,11 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
+    fun deliverOrder(orderId: String, bearerToken: String): HttpResponse<OrderResponseDTO> {
+        val response = post("/v1/orders/$orderId/deliver", "{}", bearerToken)
+        return SerializedHttpResponse(response, mapper.readValue(response.body()))
+    }
+
     fun getOrderMetrics(bearerToken: String): HttpResponse<OrderMetricsResponseDTO> {
         val response = get("/v1/orders/metrics", bearerToken)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))

@@ -22,13 +22,13 @@ import br.com.soat.supply.SupplyRepository
 import br.com.soat.supply.createSupply
 import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.createUser
+import br.com.soat.user.model.User
 import br.com.soat.vehicle.createVehicle
 import br.com.soat.waitFor
 import io.mockk.every
 import io.mockk.slot
 import java.time.LocalDateTime
 import java.time.ZoneOffset.UTC
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -48,7 +48,7 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
     @Test
     fun `should complete full order lifecycle`() {
         // prepare
-        val attendant = createUser()
+        val attendant = createUser(role = User.Role.ATTENDANT)
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
         val supply = createSupply(quantityInStock = 10)
@@ -202,5 +202,18 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
             executionMetric?.completedAt != null
         }
         assertNotNull(executionMetric!!.completedAt)
+
+        // deliver order
+        val deliverOrderResponse = http.deliverOrder(orderCompleted.id.toString(), bearerToken)
+        assertEquals(200, deliverOrderResponse.statusCode())
+
+        // assert order status is DELIVERED
+        val orderDelivered = orderRepository.findById(orderCompleted.id)!!
+        assertEquals(Order.Status.DELIVERED, orderDelivered.status)
+
+        // validate public status endpoint shows DELIVERED
+        val statusAfterDelivery = http.getOrderStatus(orderDelivered.id.toString())
+        assertEquals(200, statusAfterDelivery.statusCode())
+        assertEquals(Order.Status.DELIVERED, statusAfterDelivery.body().status)
     }
 }

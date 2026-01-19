@@ -74,7 +74,7 @@ class OrderListenerUseCase(
     fun registerExecutionTimeMetric(orderId: UUID, status: Order.Status) {
         when (status) {
             Order.Status.IN_PROGRESS -> {
-                orderExecutionMetricRepository.save(
+                orderExecutionMetricRepository.create(
                     OrderExecutionMetric(
                         orderId = orderId,
                         inProgressAt = LocalDateTime.now()

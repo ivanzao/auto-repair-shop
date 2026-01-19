@@ -1,4 +1,6 @@
 import org.gradle.api.tasks.testing.Test
+import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
@@ -63,6 +65,15 @@ subprojects {
         useJUnitPlatform()
         excludes.clear()
         include("**/*IntegrationTest.*")
+
+        // Explicitly configure JaCoCo for integration tests
+        extensions.configure(JacocoTaskExtension::class) {
+            isEnabled = true
+            setDestinationFile(layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile)
+        }
+
+        // Ensure classes are compiled before running integration tests
+        dependsOn(tasks.named("classes"))
     }
 
     // JaCoCo report for unit tests

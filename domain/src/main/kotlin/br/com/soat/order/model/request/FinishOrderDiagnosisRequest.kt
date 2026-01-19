@@ -6,5 +6,5 @@ import java.util.UUID
 data class FinishOrderDiagnosisRequest(
     val orderId: UUID,
     val servicesIds: List<UUID>,
-    val extraSuppliesRequests: List<SupplyRequirement>,
+    val extraSupplyRequirements: List<SupplyRequirement>,
 )

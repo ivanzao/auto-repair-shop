@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.update
 
 class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
 
-    override fun save(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
+    override fun create(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
         OrderExecutionMetrics.insert {
             it[id] = metric.id
             it[orderId] = metric.orderId
@@ -22,6 +22,14 @@ class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
         }.resultedValues?.singleOrNull()
             ?.toOrderExecutionMetric()
             ?: throw IllegalStateException("Failed to save OrderExecutionMetric")
+    }
+
+    override fun update(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
+        OrderExecutionMetrics.update({ OrderExecutionMetrics.id eq metric.id }) {
+            it[completedAt] = metric.completedAt?.toKotlinLocalDateTime()
+        }
+
+        findByOrderId(metric.orderId) ?: throw IllegalStateException("Failed to update OrderExecutionMetric")
     }
 
     override fun findByOrderId(orderId: UUID): OrderExecutionMetric? = transaction {
@@ -33,13 +41,6 @@ class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
             ?.toOrderExecutionMetric()
     }
 
-    override fun update(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
-        OrderExecutionMetrics.update({ OrderExecutionMetrics.id eq metric.id }) {
-            it[completedAt] = metric.completedAt?.toKotlinLocalDateTime()
-        }
-        findByOrderId(metric.orderId) ?: throw IllegalStateException("Failed to update OrderExecutionMetric")
-    }
-
     override fun getMetrics(): OrderMetrics = transaction {
         val sql = """
             SELECT
@@ -49,7 +50,7 @@ class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
             WHERE completed_at IS NOT NULL
         """.trimIndent()
 
-        val result = exec(sql) { rs ->
+        val (totalCompleted, avgSeconds) = exec(sql) { rs ->
             if (rs.next()) {
                 val totalCompleted = rs.getLong("total_completed")
                 val avgSeconds = rs.getDouble("avg_seconds").takeIf { !rs.wasNull() }
@@ -60,8 +61,8 @@ class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
         } ?: (0L to null)
 
         OrderMetrics(
-            totalCompleted = result.first,
-            averageExecutionTime = result.second?.let { Duration.ofSeconds(it.toLong()) }
+            totalCompleted = totalCompleted,
+            averageExecutionTime = avgSeconds?.let { Duration.ofSeconds(it.toLong()) }
         )
     }
 }

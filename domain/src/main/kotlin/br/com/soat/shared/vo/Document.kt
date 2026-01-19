@@ -31,12 +31,9 @@ class Document private constructor(val value: String, val type: Type) {
     }
 
     fun formatted(): String = when (type) {
-        Type.CPF -> "${value.substring(0, 3)}.${value.substring(3, 6)}.${value.substring(6, 9)}-${value.substring(9)}"
-        Type.CNPJ -> "${value.substring(0, 2)}.${value.substring(2, 5)}.${value.substring(5, 8)}/${value.substring(8, 12)}-${value.substring(12)}"
+        Type.CPF -> "${value.take(3)}.${value.substring(3, 6)}.${value.substring(6, 9)}-${value.substring(9)}"
+        Type.CNPJ -> "${value.take(2)}.${value.substring(2, 5)}.${value.substring(5, 8)}/${value.substring(8, 12)}-${value.substring(12)}"
     }
-
-    fun isCpf(): Boolean = type == Type.CPF
-    fun isCnpj(): Boolean = type == Type.CNPJ
 
     override fun toString(): String = value
 

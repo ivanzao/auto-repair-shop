@@ -1,8 +1,12 @@
 package br.com.soat.order
 
 import br.com.soat.customer.CustomerRepository
+import br.com.soat.customer.exception.CustomerNotFoundException
 import br.com.soat.event.EventPublisher
 import br.com.soat.event.repository.EventRepository
+import br.com.soat.order.exception.IllegalOrderCommandException
+import br.com.soat.order.exception.InvalidOrderApprovalTokenException
+import br.com.soat.order.exception.OrderNotFoundException
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderMetrics
 import br.com.soat.order.model.OrderSchedule
@@ -10,19 +14,23 @@ import br.com.soat.order.model.OrderService
 import br.com.soat.order.model.event.OrderCompletedEvent
 import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
 import br.com.soat.order.model.event.OrderInProgressEvent
+import br.com.soat.order.model.request.CreateOrderRequest
+import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
+import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
+import br.com.soat.order.model.request.StartOrderDiagnosisRequest
 import br.com.soat.order.repository.OrderApprovalTokenRepository
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
 import br.com.soat.order.repository.OrderServiceRepository
-import br.com.soat.order.model.request.CreateOrderRequest
-import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
-import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
-import br.com.soat.order.model.request.StartOrderDiagnosisRequest
+import br.com.soat.service.exception.ServiceNotFoundException
 import br.com.soat.shared.model.Page
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.user.UserRepository
+import br.com.soat.user.exception.UserNotFoundException
+import br.com.soat.user.model.User
 import br.com.soat.vehicle.VehicleRepository
+import br.com.soat.vehicle.exception.VehicleNotFoundException
 import java.util.UUID
 import java.util.UUID.randomUUID
 
@@ -42,13 +50,14 @@ class OrderUseCase(
 
     fun create(request: CreateOrderRequest): Order {
         val customer = customerRepository.findById(request.customerId)
-            ?: throw IllegalArgumentException("Customer not found ${request.customerId}")
+            ?: throw CustomerNotFoundException(request.customerId)
 
         val vehicle = vehicleRepository.findById(request.vehicleId)
-            ?: throw IllegalArgumentException("Vehicle not found ${request.vehicleId}")
+            ?: throw VehicleNotFoundException(request.vehicleId)
 
         val attendant = userRepository.findById(request.attendantId)
-            ?: throw IllegalArgumentException("Attendant not found ${request.attendantId}")
+            ?.takeIf { it.role == User.Role.ATTENDANT }
+            ?: throw UserNotFoundException(request.attendantId)
 
         return orderRepository.create(
             Order(
@@ -61,8 +70,10 @@ class OrderUseCase(
     }
 
     fun scheduleVehicleDelivery(request: ScheduleOrderVehicleRequest) {
-        val order = orderRepository.findById(request.orderId)
-            ?: throw IllegalArgumentException("Order not found ${request.orderId}")
+        val order = orderRepository.findById(request.orderId) ?: throw OrderNotFoundException(request.orderId)
+
+        if (!order.canScheduleVehicleDelivery())
+            throw IllegalOrderCommandException("Cannot schedule vehicle delivery for Order ${order.id}")
 
         orderScheduleRepository.save(
             OrderSchedule(
@@ -75,8 +86,10 @@ class OrderUseCase(
     }
 
     fun scheduleVehicleReturn(request: ScheduleOrderVehicleRequest) {
-        val order = orderRepository.findById(request.orderId)
-            ?: throw IllegalArgumentException("Order not found ${request.orderId}")
+        val order = orderRepository.findById(request.orderId) ?: throw OrderNotFoundException(request.orderId)
+
+        if (!order.canScheduleVehicleReturn())
+            throw IllegalOrderCommandException("Cannot schedule vehicle return for Order ${order.id}")
 
         orderScheduleRepository.save(
             OrderSchedule(
@@ -90,20 +103,20 @@ class OrderUseCase(
 
     fun startDiagnosis(request: StartOrderDiagnosisRequest): Order {
         val order = orderRepository.findById(request.orderId)
-            ?: throw IllegalArgumentException("Order not found ${request.orderId}")
+            ?: throw OrderNotFoundException(request.orderId)
 
         return orderRepository.update(order.inDiagnosis(request.technician))
     }
 
     fun finishDiagnosis(request: FinishOrderDiagnosisRequest): Order {
-        val order = orderRepository.findById(request.orderId)
-            ?: throw IllegalArgumentException("Order not found ${request.orderId}")
+        val order = orderRepository.findById(request.orderId) ?: throw OrderNotFoundException(request.orderId)
 
         val services = serviceRepository.findAllByIds(request.servicesIds)
         validateRequestedServicesExists(services, request.servicesIds)
 
-        val orderWithServices = order.addServices(services)
-            .addSupplyRequirements(request.extraSuppliesRequests)
+        val orderWithServices = order
+            .addServices(services)
+            .addSupplyRequirements(request.extraSupplyRequirements)
 
         val (updatedOrder, event) = tx.inTransaction {
             val order = orderRepository.update(orderWithServices)
@@ -116,18 +129,14 @@ class OrderUseCase(
         return updatedOrder
     }
 
-    fun findById(orderId: UUID): Order? {
-        return orderRepository.findById(orderId)
-    }
+    fun findById(orderId: UUID) = orderRepository.findById(orderId)
 
     fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
 
     fun getMetrics(): OrderMetrics = orderExecutionMetricRepository.getMetrics()
 
     fun complete(orderId: UUID): Order {
-        val order = orderRepository.findById(orderId)
-            ?: throw IllegalArgumentException("Order not found $orderId")
-
+        val order = orderRepository.findById(orderId) ?: throw IllegalArgumentException("Order not found $orderId")
         val (savedOrder, event) = tx.inTransaction {
             val order = orderRepository.update(order.completed())
             val event = eventRepository.save(OrderCompletedEvent(orderId = order.id))
@@ -139,16 +148,17 @@ class OrderUseCase(
         return savedOrder
     }
 
-    fun approveQuote(approvalTokenId: UUID) {
-        val approvalToken = orderApprovalTokenRepository.findById(approvalTokenId)
-            ?: throw IllegalArgumentException("Approval token not found $approvalTokenId")
+    fun deliver(orderId: UUID): Order {
+        val order = orderRepository.findById(orderId) ?: throw OrderNotFoundException(orderId)
+        return orderRepository.update(order.delivered())
+    }
 
-        if (!approvalToken.isValid()) {
-            throw IllegalArgumentException("Approval token is invalid or expired")
-        }
+    fun approveQuote(approvalTokenId: UUID) {
+        val approvalToken = findValidApprovalToken(approvalTokenId)
+            ?: throw InvalidOrderApprovalTokenException()
 
         val order = orderRepository.findById(approvalToken.orderId)
-            ?: throw IllegalArgumentException("Order not found ${approvalToken.orderId}")
+            ?: throw OrderNotFoundException(approvalToken.orderId)
 
         val event = tx.inTransaction {
             orderApprovalTokenRepository.update(approvalToken.markAsUsed())
@@ -160,15 +170,11 @@ class OrderUseCase(
     }
 
     fun declineQuote(approvalTokenId: UUID) {
-        val approvalToken = orderApprovalTokenRepository.findById(approvalTokenId)
-            ?: throw IllegalArgumentException("Approval token not found $approvalTokenId")
-
-        if (!approvalToken.isValid()) {
-            throw IllegalArgumentException("Approval token is invalid or expired")
-        }
+        val approvalToken = findValidApprovalToken(approvalTokenId)
+            ?: throw InvalidOrderApprovalTokenException()
 
         val order = orderRepository.findById(approvalToken.orderId)
-            ?: throw IllegalArgumentException("Order not found ${approvalToken.orderId}")
+            ?: throw OrderNotFoundException(approvalToken.orderId)
 
         tx.inTransaction {
             orderRepository.update(order.canceled())
@@ -176,9 +182,12 @@ class OrderUseCase(
         }
     }
 
+    private fun findValidApprovalToken(approvalTokenId: UUID) =
+        orderApprovalTokenRepository.findById(approvalTokenId)
+            ?.takeIf { it.isValid() }
+
     private fun validateRequestedServicesExists(foundServices: List<OrderService>, servicesIds: List<UUID>) {
-        servicesIds.filter { it !in foundServices.map { service -> service.id } }
-            .takeIf { it.isNotEmpty() }
-            ?.let { throw IllegalArgumentException("Requested services not found: ${it.joinToString(", ")}") }
+        servicesIds.firstOrNull { it !in foundServices.map { service -> service.id } }
+            ?.let { throw ServiceNotFoundException(it) }
     }
 }

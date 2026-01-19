@@ -53,11 +53,7 @@ fun Application.customerRoutes(koin: Koin) {
                     val request = call.receive<CreateCustomerRequestDTO>()
                     val updatedCustomer = customerUseCase.update(id, request.toModel())
 
-                    if (updatedCustomer != null) {
-                        call.respond(HttpStatusCode.OK, CustomerResponseDTO.from(updatedCustomer))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, CustomerResponseDTO.from(updatedCustomer))
                 }
 
                 delete("/customers/{id}") {

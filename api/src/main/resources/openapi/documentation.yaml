@@ -352,6 +352,39 @@ paths:
         "404":
           description: "Ordem não encontrada"
 
+  /orders/{id}/deliver:
+    post:
+      tags:
+        - Order
+      summary: "Entregar veículo ao cliente"
+      description: "Marca a ordem de serviço como entregue ao cliente"
+      operationId: deliverOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID da ordem de serviço"
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: "Ordem marcada como entregue"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponseDTO"
+        "401":
+          description: "Não autorizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Ordem não encontrada"
+
   /orders/quote/approve:
     get:
       tags:
@@ -1521,6 +1554,7 @@ components:
         - IN_PROGRESS
         - CANCELED
         - COMPLETED
+        - DELIVERED
 
     SupplyRequirementDTO:
       type: object

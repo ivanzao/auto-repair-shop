@@ -17,8 +17,6 @@ class DocumentTest {
             val document = Document("12345678909")
             assertEquals("12345678909", document.value)
             assertEquals(Document.Type.CPF, document.type)
-            assertTrue(document.isCpf())
-            assertFalse(document.isCnpj())
         }
 
         @Test
@@ -43,8 +41,6 @@ class DocumentTest {
             val document = Document("12345678000195")
             assertEquals("12345678000195", document.value)
             assertEquals(Document.Type.CNPJ, document.type)
-            assertTrue(document.isCnpj())
-            assertFalse(document.isCpf())
         }
 
         @Test

@@ -1,6 +1,7 @@
 package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
+import br.com.soat.order.exception.IllegalOrderStateException
 import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
@@ -27,15 +28,57 @@ data class Order(
     val technician: String? = null,
 ) {
 
-    fun inDiagnosis(technician: String) = copy(status = Status.IN_DIAGNOSIS, technician = technician)
-    fun waitingApproval() = copy(status = Status.WAITING_APPROVAL)
-    fun inProgress() = copy(status = Status.IN_PROGRESS)
-    fun canceled() = copy(status = Status.CANCELED)
-    fun completed() = copy(status = Status.COMPLETED)
+    fun inDiagnosis(technician: String): Order {
+        if (status != Status.RECEIVED)
+            throw IllegalOrderStateException("Order must be RECEIVED. Current status: $status")
+
+        return copy(status = Status.IN_DIAGNOSIS, technician = technician)
+    }
+
+    fun waitingApproval(): Order {
+        if (status != Status.IN_DIAGNOSIS)
+            throw IllegalOrderStateException("Order must be IN_DIAGNOSIS. Current status: $status")
+
+        return copy(status = Status.WAITING_APPROVAL)
+    }
+
+    fun inProgress(): Order {
+        if (status != Status.WAITING_APPROVAL)
+            throw IllegalOrderStateException("Order must be WAITING_APPROVAL. Current status: $status")
+
+        return copy(status = Status.IN_PROGRESS)
+    }
+
+    fun completed() : Order {
+        if (status != Status.IN_PROGRESS)
+            throw IllegalOrderStateException("Order must be IN_PROGRESS. Current status: $status")
+
+        return copy(status = Status.COMPLETED)
+    }
+
+    fun delivered() : Order {
+        if (status != Status.COMPLETED)
+            throw IllegalOrderStateException("Order must be COMPLETED. Current status: $status")
+
+        return copy(status = Status.DELIVERED)
+    }
+
+    fun canceled() : Order {
+        if (status == Status.COMPLETED)
+            throw IllegalOrderStateException("Order must not be COMPLETED")
+
+        if (status == Status.CANCELED)
+            throw IllegalOrderStateException("Order already canceled")
+
+        return copy(status = Status.CANCELED)
+    }
 
     fun addServices(services: List<OrderService>) = copy(services = this.services + services)
 
     fun addSupplyRequirements(supplyRequirements: List<SupplyRequirement>) = copy(extraSupplies = supplyRequirements)
+
+    fun canScheduleVehicleDelivery() = status == Status.RECEIVED
+    fun canScheduleVehicleReturn() = status == Status.COMPLETED
 
     fun getSupplyRequirements(): List<SupplyRequirement> {
         val serviceSupplies = services.flatMap { it.requiredSupplies }
@@ -45,6 +88,6 @@ data class Order(
     }
 
     enum class Status {
-        RECEIVED, IN_DIAGNOSIS, WAITING_APPROVAL, IN_PROGRESS, CANCELED, COMPLETED
+        RECEIVED, IN_DIAGNOSIS, WAITING_APPROVAL, IN_PROGRESS, CANCELED, COMPLETED, DELIVERED
     }
 }

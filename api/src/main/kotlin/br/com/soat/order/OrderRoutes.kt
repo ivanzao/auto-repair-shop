@@ -54,7 +54,7 @@ fun Application.orderRoutes(koin: Koin) {
                 }
             }
 
-            authenticate("admin") {
+            authenticate("attendant") {
                 get("/orders") {
                     val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                     val ordersPage = orderUseCase.findAll(page)
@@ -99,7 +99,7 @@ fun Application.orderRoutes(koin: Koin) {
                         FinishOrderDiagnosisRequest(
                             orderId = id,
                             servicesIds = request.servicesIds,
-                            extraSuppliesRequests = request.extraSuppliesRequests.map { it.toModel() },
+                            extraSupplyRequirements = request.extraSuppliesRequests.map { it.toModel() },
                         )
                     )
 
@@ -132,6 +132,16 @@ fun Application.orderRoutes(koin: Koin) {
                     call.respond(
                         status = HttpStatusCode.OK,
                         message = OrderResponseDTO.from(completedOrder)
+                    )
+                }
+
+                post("/orders/{id}/deliver") {
+                    val id = call.getUUIDPathParameter("id")
+                    val deliveredOrder = orderUseCase.deliver(id)
+
+                    call.respond(
+                        status = HttpStatusCode.OK,
+                        message = OrderResponseDTO.from(deliveredOrder)
                     )
                 }
 

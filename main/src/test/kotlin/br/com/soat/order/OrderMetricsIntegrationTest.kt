@@ -75,9 +75,9 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             completedAt = LocalDateTime.of(2024, 1, 3, 10, 5, 0) // 300 seconds later
         )
 
-        orderExecutionMetricRepository.save(metric1)
-        orderExecutionMetricRepository.save(metric2)
-        orderExecutionMetricRepository.save(metric3)
+        orderExecutionMetricRepository.create(metric1)
+        orderExecutionMetricRepository.create(metric2)
+        orderExecutionMetricRepository.create(metric3)
 
         val response = http.getOrderMetrics(bearerToken)
 
@@ -110,8 +110,8 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             completedAt = null
         )
 
-        orderExecutionMetricRepository.save(completedMetric)
-        orderExecutionMetricRepository.save(inProgressMetric)
+        orderExecutionMetricRepository.create(completedMetric)
+        orderExecutionMetricRepository.create(inProgressMetric)
 
         val response = http.getOrderMetrics(bearerToken)
 

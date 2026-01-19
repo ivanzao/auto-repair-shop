@@ -29,7 +29,6 @@ class OrderPostgresRepository(
     override fun findAllPaginated(page: Int): Page<Order> = transaction {
         val limit = PAGE_SIZE
         val offset = (page - 1).toLong() * limit
-        val totalElements = Orders.selectAll().count()
 
         val orderRows = Orders
             .join(Customers, JoinType.INNER, Orders.customerId, Customers.id)
@@ -69,7 +68,7 @@ class OrderPostgresRepository(
             row.toOrder(services, supplies)
         }
 
-        Page.of(orders, page, limit, totalElements)
+        Page(orders, page, limit)
     }
 
     override fun findById(id: UUID): Order? = transaction {
