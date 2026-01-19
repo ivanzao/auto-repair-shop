@@ -1,11 +1,18 @@
 package br.com.soat
 
+import br.com.soat.auth.dto.AuthenticateUserRequestDTO
 import br.com.soat.config.Config
 import br.com.soat.config.fromClasspath
 import br.com.soat.consumer.CommandConsumerWorker
 import br.com.soat.consumer.EventConsumerWorker
 import br.com.soat.mail.EmailService
 import br.com.soat.scheduler.ScheduledTaskRunner
+import br.com.soat.security.HashService
+import br.com.soat.shared.vo.Document
+import br.com.soat.shared.vo.Email
+import br.com.soat.shared.vo.PhoneNumber
+import br.com.soat.user.UserRepository
+import br.com.soat.user.model.User
 import io.mockk.mockk
 import java.net.ServerSocket
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -28,6 +35,9 @@ abstract class IntegrationTest {
     lateinit var koinApplication: KoinApplication
     lateinit var server: KtorHttpServer
     lateinit var http: IntegrationTestHttpClient
+
+    val httpClient: IntegrationTestHttpClient
+        get() = http
 
     @BeforeEach
     fun cleanDatabase() {
@@ -85,6 +95,36 @@ abstract class IntegrationTest {
     }
 
     inline fun <reified T> get(): T = koinApplication.koin.get()
+
+    fun loginAsAdmin(): String {
+        val userRepository = get<UserRepository>()
+        val hashService = get<HashService>()
+
+        val adminEmail = "admin@test.com"
+        val adminPassword = "admin123"
+
+        if (userRepository.findByEmail(Email(adminEmail)) == null) {
+            userRepository.create(
+                User(
+                    name = "Admin Test",
+                    email = Email(adminEmail),
+                    document = Document("99988877766"),
+                    contact = PhoneNumber("11999999999"),
+                    hashedPassword = hashService.hash(adminPassword),
+                    role = User.Role.ADMIN
+                )
+            )
+        }
+
+        val loginResponse = http.login(
+            AuthenticateUserRequestDTO(
+                email = adminEmail,
+                password = adminPassword
+            )
+        )
+
+        return loginResponse.body().accessToken
+    }
 
     private val testModule = module {
         single<Config> { Config.fromClasspath("application-test.yaml") }

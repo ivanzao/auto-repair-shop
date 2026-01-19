@@ -11,6 +11,8 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
+import io.ktor.server.routing.route
+import br.com.soat.shared.getUUIDPathParameter
 import io.ktor.server.routing.routing
 import org.koin.core.Koin
 
@@ -18,59 +20,55 @@ fun Application.supplyRoutes(koin: Koin) {
     val useCase = koin.inject<SupplyUseCase>().value
 
     routing {
-        authenticate("admin") {
-            post("/supplies") {
-                val request = call.receive<CreateSupplyRequestDTO>()
-                val createdSupply = useCase.create(request.toModel())
+        route("/v1") {
+            authenticate("admin") {
+                post("/supplies") {
+                    val request = call.receive<CreateSupplyRequestDTO>()
+                    val createdSupply = useCase.create(request.toModel())
 
-                call.respond(
-                    status = HttpStatusCode.Created,
-                    message = SupplyResponseDTO.from(createdSupply)
-                )
-            }
-
-            get("/supplies/{id}") {
-                val id = call.parameters["id"]?.let { java.util.UUID.fromString(it) }
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid ID format")
-
-                val supply = useCase.findById(id)
-
-                if (supply != null) {
-                    call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(supply))
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                    call.respond(
+                        status = HttpStatusCode.Created,
+                        message = SupplyResponseDTO.from(createdSupply)
+                    )
                 }
-            }
 
-            get("/supplies") {
-                val supplies = useCase.findAll()
-                call.respond(HttpStatusCode.OK, supplies.map { SupplyResponseDTO.from(it) })
-            }
+                get("/supplies/{id}") {
+                    val id = call.getUUIDPathParameter("id")
+                    val supply = useCase.findById(id)
 
-            put("/supplies/{id}") {
-                val id = call.parameters["id"]?.let { java.util.UUID.fromString(it) }
-                    ?: return@put call.respond(HttpStatusCode.BadRequest, "Invalid ID format")
-
-                val request = call.receive<CreateSupplyRequestDTO>()
-                val updatedSupply = useCase.update(id, request.toModel())
-
-                if (updatedSupply != null) {
-                    call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(updatedSupply))
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                    if (supply != null) {
+                        call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(supply))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
                 }
-            }
 
-            delete("/supplies/{id}") {
-                val id = call.parameters["id"]?.let { java.util.UUID.fromString(it) }
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid ID format")
+                get("/supplies") {
+                    val supplies = useCase.findAll()
+                    call.respond(HttpStatusCode.OK, supplies.map { SupplyResponseDTO.from(it) })
+                }
 
-                val deleted = useCase.delete(id)
+                put("/supplies/{id}") {
+                    val id = call.getUUIDPathParameter("id")
+                    val request = call.receive<CreateSupplyRequestDTO>()
+                    val updatedSupply = useCase.update(id, request.toModel())
 
-                if (deleted) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                    if (updatedSupply != null) {
+                        call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(updatedSupply))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
+                }
+
+                delete("/supplies/{id}") {
+                    val id = call.getUUIDPathParameter("id")
+                    val deleted = useCase.delete(id)
+
+                    if (deleted) {
+                        call.respond(HttpStatusCode.NoContent)
+                    } else {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
                 }
             }
         }

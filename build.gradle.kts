@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     jacoco
     alias(libs.plugins.sonarqube)
+    alias(libs.plugins.owasp.dependencycheck)
 }
 
 repositories {
@@ -194,4 +195,16 @@ tasks.register<JacocoReport>("jacocoAggregatedReport") {
 // Make sonar task depend on aggregated report
 tasks.named("sonar") {
     dependsOn(tasks.named("jacocoAggregatedReport"))
+}
+
+// OWASP Dependency-Check configuration for vulnerability scanning
+dependencyCheck {
+    formats = listOf("HTML", "JSON", "XML")
+    outputDirectory = layout.buildDirectory.dir("reports/dependency-check").get().asFile.absolutePath
+    scanConfigurations = listOf("runtimeClasspath", "compileClasspath")
+    failBuildOnCVSS = 7.0f // Fail build on high/critical vulnerabilities
+
+    analyzers {
+        ossIndexEnabled = false // Disable OSS Index (requires auth, NVD is sufficient)
+    }
 }

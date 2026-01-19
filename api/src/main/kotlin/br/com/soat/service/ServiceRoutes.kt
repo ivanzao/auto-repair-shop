@@ -11,6 +11,8 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
+import io.ktor.server.routing.route
+import br.com.soat.shared.getUUIDPathParameter
 import io.ktor.server.routing.routing
 import org.koin.core.Koin
 
@@ -18,58 +20,54 @@ fun Application.serviceRoutes(koin: Koin) {
     val useCase = koin.inject<ServiceUseCase>().value
 
     routing {
-        authenticate("admin") {
-            post("/services") {
-                val request = call.receive<CreateServiceRequestDTO>()
-                val createdService = useCase.create(request.toModel())
+        route("/v1") {
+            authenticate("admin") {
+                post("/services") {
+                    val request = call.receive<CreateServiceRequestDTO>()
+                    val createdService = useCase.create(request.toModel())
 
-                call.respond(
-                    status = HttpStatusCode.Created,
-                    message = ServiceResponseDTO.from(createdService)
-                )
-            }
-
-            get("/services/{id}") {
-                val id = call.parameters["id"]?.let { java.util.UUID.fromString(it) }
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid ID format")
-
-                val service = useCase.findById(id)
-
-                if (service != null) {
-                    call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(service))
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                    call.respond(
+                        status = HttpStatusCode.Created,
+                        message = ServiceResponseDTO.from(createdService)
+                    )
                 }
-            }
 
-            get("/services") {
-                val services = useCase.findAll()
-                call.respond(HttpStatusCode.OK, services.map { ServiceResponseDTO.from(it) })
-            }
+                get("/services/{id}") {
+                    val id = call.getUUIDPathParameter("id")
+                    val service = useCase.findById(id)
 
-            put("/services/{id}") {
-                val id = call.parameters["id"]?.let { java.util.UUID.fromString(it) }
-                    ?: return@put call.respond(HttpStatusCode.BadRequest, "Invalid ID format")
-
-                val request = call.receive<CreateServiceRequestDTO>()
-                try {
-                    val updatedService = useCase.update(id, request.toModel())
-                    call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(updatedService))
-                } catch (e: IllegalStateException) {
-                    call.respond(HttpStatusCode.NotFound)
+                    if (service != null) {
+                        call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(service))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
                 }
-            }
 
-            delete("/services/{id}") {
-                val id = call.parameters["id"]?.let { java.util.UUID.fromString(it) }
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid ID format")
+                get("/services") {
+                    val services = useCase.findAll()
+                    call.respond(HttpStatusCode.OK, services.map { ServiceResponseDTO.from(it) })
+                }
 
-                val deleted = useCase.delete(id)
+                put("/services/{id}") {
+                    val id = call.getUUIDPathParameter("id")
+                    val request = call.receive<CreateServiceRequestDTO>()
+                    try {
+                        val updatedService = useCase.update(id, request.toModel())
+                        call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(updatedService))
+                    } catch (e: IllegalStateException) {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
+                }
 
-                if (deleted) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                delete("/services/{id}") {
+                    val id = call.getUUIDPathParameter("id")
+                    val deleted = useCase.delete(id)
+
+                    if (deleted) {
+                        call.respond(HttpStatusCode.NoContent)
+                    } else {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
                 }
             }
         }

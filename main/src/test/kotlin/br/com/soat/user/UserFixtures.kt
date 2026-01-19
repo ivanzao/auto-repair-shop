@@ -4,6 +4,7 @@ import br.com.soat.IntegrationTest
 import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.PhoneNumber
+import br.com.soat.user.dto.CreateUserRequestDTO
 import br.com.soat.user.model.User
 import java.time.LocalDateTime
 import java.util.UUID
@@ -33,3 +34,21 @@ fun IntegrationTest.createUser(
         role = role
     )
 )
+
+object UserFixtures {
+    fun createUserRequest(
+        name: String = "Test User",
+        document: String = "11122233344",
+        email: String = "test@email.com",
+        contact: String = "11999998888",
+        password: String = "password123",
+        role: User.Role = User.Role.ADMIN
+    ) = CreateUserRequestDTO(
+        name = name,
+        document = document,
+        email = email,
+        contact = contact,
+        password = password,
+        role = role
+    )
+}

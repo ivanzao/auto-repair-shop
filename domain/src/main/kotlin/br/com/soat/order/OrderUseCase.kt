@@ -4,12 +4,14 @@ import br.com.soat.customer.CustomerRepository
 import br.com.soat.event.EventPublisher
 import br.com.soat.event.repository.EventRepository
 import br.com.soat.order.model.Order
+import br.com.soat.order.model.OrderMetrics
 import br.com.soat.order.model.OrderSchedule
 import br.com.soat.order.model.OrderService
 import br.com.soat.order.model.event.OrderCompletedEvent
 import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
 import br.com.soat.order.model.event.OrderInProgressEvent
 import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
 import br.com.soat.order.repository.OrderServiceRepository
@@ -17,6 +19,7 @@ import br.com.soat.order.model.request.CreateOrderRequest
 import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
 import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
 import br.com.soat.order.model.request.StartOrderDiagnosisRequest
+import br.com.soat.shared.model.Page
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.user.UserRepository
 import br.com.soat.vehicle.VehicleRepository
@@ -32,6 +35,7 @@ class OrderUseCase(
     private val eventRepository: EventRepository,
     private val orderScheduleRepository: OrderScheduleRepository,
     private val orderApprovalTokenRepository: OrderApprovalTokenRepository,
+    private val orderExecutionMetricRepository: OrderExecutionMetricRepository,
     private val eventPublisher: EventPublisher,
     private val tx: RepositoryTransactionHandler
 ) {
@@ -115,6 +119,10 @@ class OrderUseCase(
     fun findById(orderId: UUID): Order? {
         return orderRepository.findById(orderId)
     }
+
+    fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
+
+    fun getMetrics(): OrderMetrics = orderExecutionMetricRepository.getMetrics()
 
     fun complete(orderId: UUID): Order {
         val order = orderRepository.findById(orderId)

@@ -145,7 +145,7 @@ val applicationModule = module {
     single<SupplyStockListenerService> { SupplyStockListenerService(get(), get(), get(), get(), get()) }
     single<VehicleUseCase> { VehicleUseCase(get()) }
     single<CustomerUseCase> { CustomerUseCase(get()) }
-    single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single<OrderListenerUseCase> { OrderListenerUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     // worker - buses (simulates Kafka topics)

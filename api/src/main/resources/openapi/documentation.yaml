@@ -5,7 +5,7 @@ info:
   version: "1.0.0"
 
 servers:
-  - url: "http://localhost:8080"
+  - url: "http://localhost:8080/v1"
     description: "Local development server"
 
 tags:
@@ -81,25 +81,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-  # ==================== HEALTH ====================
-  /health:
-    get:
-      tags:
-        - Health
-      summary: "Health check"
-      description: "Verifica se a aplicação está funcionando"
-      operationId: healthCheck
-      responses:
-        "200":
-          description: "Aplicação está saudável"
-          content:
-            text/plain:
-              schema:
-                type: string
-              examples:
-                success:
-                  value: "OK"
 
   # ==================== ORDERS ====================
   /orders:
@@ -1189,6 +1170,132 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /users/{id}:
+    get:
+      tags:
+        - User
+      summary: "Buscar usuário por ID"
+      description: "Retorna os dados de um usuário específico"
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID do usuário"
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: "Usuário encontrado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponseDTO"
+        "400":
+          description: "ID inválido"
+          content:
+            application/json:
+              schema:
+                type: string
+              examples:
+                invalid:
+                  value: "Invalid ID format"
+        "401":
+          description: "Não autorizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Usuário não encontrado"
+
+    put:
+      tags:
+        - User
+      summary: "Atualizar usuário"
+      description: "Atualiza os dados de um usuário existente"
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID do usuário"
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequestDTO"
+      responses:
+        "200":
+          description: "Usuário atualizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponseDTO"
+        "400":
+          description: "ID inválido"
+          content:
+            application/json:
+              schema:
+                type: string
+              examples:
+                invalid:
+                  value: "Invalid ID format"
+        "401":
+          description: "Não autorizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Usuário não encontrado"
+
+    delete:
+      tags:
+        - User
+      summary: "Remover usuário"
+      description: "Remove um usuário do sistema"
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID do usuário"
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: "Usuário removido com sucesso"
+        "400":
+          description: "ID inválido"
+          content:
+            application/json:
+              schema:
+                type: string
+              examples:
+                invalid:
+                  value: "Invalid ID format"
+        "401":
+          description: "Não autorizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Usuário não encontrado"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1199,7 +1306,7 @@ components:
         Autenticação via JWT Bearer Token.
 
         **Como obter o token:**
-        1. Faça POST em `/login` com email e password
+        1. Faça POST em `/v1/login` com email e password
         2. Use o `accessToken` retornado no header Authorization
 
         **Formato do header:**
@@ -1212,7 +1319,7 @@ components:
         - `ATTENDANT`: Acesso limitado (admin + attendant endpoints)
 
         **Renovação do token:**
-        Use o endpoint `/refresh` com o `refreshToken` para obter um novo `accessToken`
+        Use o endpoint `/v1/refresh` com o `refreshToken` para obter um novo `accessToken`
 
   schemas:
     # ==================== AUTH DTOs ====================
@@ -1669,6 +1776,42 @@ components:
           type: string
           description: "Telefone de contato"
           example: "(11) 98888-7777"
+        password:
+          type: string
+          format: password
+          description: "Senha do usuário"
+          example: "senhaSegura123"
+        role:
+          $ref: "#/components/schemas/UserRole"
+      required:
+        - name
+        - document
+        - email
+        - contact
+        - password
+        - role
+
+    UpdateUserRequestDTO:
+      type: object
+      description: "Dados para atualizar um usuário do sistema"
+      properties:
+        name:
+          type: string
+          description: "Nome completo"
+          example: "Carlos Admin Atualizado"
+        document:
+          type: string
+          description: "CPF do usuário"
+          example: "111.222.333-44"
+        email:
+          type: string
+          format: email
+          description: "Email do usuário"
+          example: "carlos.novo@autorepair.com"
+        contact:
+          type: string
+          description: "Telefone de contato"
+          example: "(11) 98888-7777"
         role:
           $ref: "#/components/schemas/UserRole"
       required:
@@ -1693,12 +1836,15 @@ components:
           type: string
         contact:
           type: string
+        role:
+          type: string
       required:
         - id
         - name
         - document
         - email
         - contact
+        - role
 
     UserRole:
       type: string

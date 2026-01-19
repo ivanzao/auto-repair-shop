@@ -2,15 +2,17 @@ package br.com.soat.order
 
 import br.com.soat.customer.Customers
 import br.com.soat.order.model.Order
-import br.com.soat.order.repository.OrderServiceRepository
 import br.com.soat.order.repository.OrderRepository
+import br.com.soat.order.repository.OrderServiceRepository
 import br.com.soat.service.Services
+import br.com.soat.shared.model.Page
 import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.Users
 import br.com.soat.vehicle.Vehicles
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
@@ -23,6 +25,52 @@ import org.jetbrains.exposed.sql.update
 class OrderPostgresRepository(
     private val serviceRepository: OrderServiceRepository
 ) : OrderRepository {
+
+    override fun findAllPaginated(page: Int): Page<Order> = transaction {
+        val limit = PAGE_SIZE
+        val offset = (page - 1).toLong() * limit
+        val totalElements = Orders.selectAll().count()
+
+        val orderRows = Orders
+            .join(Customers, JoinType.INNER, Orders.customerId, Customers.id)
+            .join(Vehicles, JoinType.INNER, Orders.vehicleId, Vehicles.id)
+            .join(Users, JoinType.INNER, Orders.attendantId, Users.id)
+            .selectAll()
+            .orderBy(Orders.createdAt, SortOrder.DESC)
+            .limit(limit)
+            .offset(offset)
+            .toList()
+
+        val orderIds = orderRows.map { it[Orders.id] }
+
+        val servicesMap = if (orderIds.isNotEmpty()) {
+            OrderServices
+                .join(Services, JoinType.INNER, OrderServices.serviceId, Services.id)
+                .selectAll()
+                .where { OrderServices.orderId inList orderIds }
+                .groupBy { it[OrderServices.orderId] }
+        } else emptyMap()
+
+        val suppliesMap = if (orderIds.isNotEmpty()) {
+            OrderSupplies
+                .selectAll()
+                .where { OrderSupplies.orderId inList orderIds }
+                .groupBy { it[OrderSupplies.orderId] }
+                .mapValues { (_, rows) ->
+                    rows.map { SupplyRequirement(it[OrderSupplies.supplyId], it[OrderSupplies.quantity]) }
+                }
+        } else emptyMap()
+
+        val orders = orderRows.map { row ->
+            val orderId = row[Orders.id]
+            val serviceIds = servicesMap[orderId]?.map { it[Services.id] } ?: emptyList()
+            val services = if (serviceIds.isNotEmpty()) serviceRepository.findAllByIds(serviceIds) else emptyList()
+            val supplies = suppliesMap[orderId] ?: emptyList()
+            row.toOrder(services, supplies)
+        }
+
+        Page.of(orders, page, limit, totalElements)
+    }
 
     override fun findById(id: UUID): Order? = transaction {
         val orderRow = Orders
@@ -99,5 +147,9 @@ class OrderPostgresRepository(
                 this[OrderSupplies.quantity] = supply.quantity
             }
         }
+    }
+
+    companion object {
+        private const val PAGE_SIZE = 100
     }
 }
