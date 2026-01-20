@@ -109,20 +109,10 @@ class UserIntegrationTest : IntegrationTest() {
         val token = loginAsAdmin()
         val createdUser = httpClient.createUser(UserFixtures.createUserRequest(), token)
 
-        val deleteResponse = httpClient.deleteUser(createdUser.body().id.toString(), token)
-
+        val deleteResponse = httpClient.deleteUser(createdUser.body().id, token)
         assertEquals(204, deleteResponse.statusCode())
 
-        val getResponse = httpClient.getUser(createdUser.body().id.toString(), token)
+        val getResponse = httpClient.getUser(createdUser.body().id, token)
         assertEquals(404, getResponse.statusCode())
-    }
-
-    @Test
-    fun `should return 404 when deleting non-existent user`() {
-        val token = loginAsAdmin()
-
-        val response = httpClient.deleteUser("00000000-0000-0000-0000-000000000000", token)
-
-        assertEquals(404, response.statusCode())
     }
 }

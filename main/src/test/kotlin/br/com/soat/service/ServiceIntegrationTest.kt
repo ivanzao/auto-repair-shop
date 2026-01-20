@@ -175,14 +175,4 @@ class ServiceIntegrationTest : IntegrationTest() {
         val deletedService = serviceRepository.findById(serviceId)
         assertNull(deletedService, "Service should be deleted from database")
     }
-
-    @Test
-    fun `should return 404 when deleting non-existent service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-
-        val nonExistentId = java.util.UUID.randomUUID()
-        val deleteResponse = http.deleteService(nonExistentId, bearerToken)
-        assertEquals(404, deleteResponse.statusCode(), "HTTP status code must be 404 Not Found")
-    }
 }

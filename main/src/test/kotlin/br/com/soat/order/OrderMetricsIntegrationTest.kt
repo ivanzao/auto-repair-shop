@@ -45,13 +45,10 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
     fun `should calculate average execution time correctly`() {
         val bearerToken = loginAsAdmin()
 
-        // Create real orders first
         val order1Id = createOrderInDatabase()
         val order2Id = createOrderInDatabase()
         val order3Id = createOrderInDatabase()
 
-        // Create 3 completed orders with known execution times
-        // Order 1: 100 seconds
         val metric1 = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order1Id,
@@ -59,7 +56,6 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             completedAt = LocalDateTime.of(2024, 1, 1, 10, 1, 40) // 100 seconds later
         )
 
-        // Order 2: 200 seconds
         val metric2 = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order2Id,
@@ -94,7 +90,6 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
         val order1Id = createOrderInDatabase()
         val order2Id = createOrderInDatabase()
 
-        // Create 1 completed order (100 seconds)
         val completedMetric = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order1Id,
@@ -102,7 +97,6 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             completedAt = LocalDateTime.of(2024, 1, 1, 10, 1, 40)
         )
 
-        // Create 1 in-progress order (not completed)
         val inProgressMetric = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order2Id,
