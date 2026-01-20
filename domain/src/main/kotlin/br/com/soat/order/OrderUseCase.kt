@@ -48,6 +48,10 @@ class OrderUseCase(
     private val tx: RepositoryTransactionHandler
 ) {
 
+    fun findById(orderId: UUID) = orderRepository.findById(orderId)
+    fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
+    fun getMetrics(): OrderMetrics = orderExecutionMetricRepository.getMetrics()
+
     fun create(request: CreateOrderRequest): Order {
         val customer = customerRepository.findById(request.customerId)
             ?: throw CustomerNotFoundException(request.customerId)
@@ -128,12 +132,6 @@ class OrderUseCase(
 
         return updatedOrder
     }
-
-    fun findById(orderId: UUID) = orderRepository.findById(orderId)
-
-    fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
-
-    fun getMetrics(): OrderMetrics = orderExecutionMetricRepository.getMetrics()
 
     fun complete(orderId: UUID): Order {
         val order = orderRepository.findById(orderId) ?: throw IllegalArgumentException("Order not found $orderId")

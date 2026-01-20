@@ -6,10 +6,10 @@ import br.com.soat.order.dto.OrderMetricsResponseDTO
 import br.com.soat.order.dto.OrderResponseDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.OrderStatusResponseDTO
-import br.com.soat.shared.dto.PageResponseDTO
 import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
 import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
 import br.com.soat.order.model.request.StartOrderDiagnosisRequest
+import br.com.soat.shared.dto.PageResponseDTO
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate

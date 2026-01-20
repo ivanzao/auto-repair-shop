@@ -1,4 +1,4 @@
-package br.com.soat.security
+package br.com.soat.config
 
 import br.com.soat.auth.port.AuthenticationTokenProvider
 import io.ktor.http.HttpStatusCode
