@@ -1,6 +1,7 @@
 package br.com.soat.user
 
 import br.com.soat.security.HashService
+import br.com.soat.user.exception.UserAlreadyExistsException
 import br.com.soat.user.exception.UserNotFoundException
 import br.com.soat.user.model.CreateUserRequest
 import br.com.soat.user.model.UpdateUserRequest
@@ -17,7 +18,7 @@ class UserUseCase(
 
     fun create(request: CreateUserRequest): User {
         storagePort.findByDocument(request.document)?.let {
-            throw IllegalArgumentException("User already exists")
+            throw UserAlreadyExistsException()
         }
 
         return storagePort.create(

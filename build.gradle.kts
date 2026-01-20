@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     jacoco
     alias(libs.plugins.sonarqube)
-    alias(libs.plugins.owasp.dependencycheck)
 }
 
 repositories {

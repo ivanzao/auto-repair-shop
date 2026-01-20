@@ -21,7 +21,7 @@ fun Application.serviceRoutes(koin: Koin) {
 
     routing {
         route("/v1") {
-            authenticate("admin") {
+            authenticate("attendant") {
                 post("/services") {
                     val request = call.receive<CreateServiceRequestDTO>()
                     val createdService = useCase.create(request.toModel())

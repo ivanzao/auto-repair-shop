@@ -11,7 +11,7 @@ data class AuthenticateUserResponseDTO(
     val expiresAt: ZonedDateTime
 ) {
     companion object {
-        fun from(response: AuthenticateResponse)  = AuthenticateUserResponseDTO(
+        fun from(response: AuthenticateResponse) = AuthenticateUserResponseDTO(
             accessToken = response.accessToken,
             refreshToken = response.refreshToken,
             expiresAt = response.expiresAt.atZone(UTC)

@@ -21,7 +21,7 @@ fun Application.vehicleRoutes(koin: Koin) {
 
     routing {
         route("/v1") {
-            authenticate("admin") {
+            authenticate("attendant") {
                 post("/vehicles") {
                     val request = call.receive<CreateVehicleRequestDTO>()
                     val createdVehicle = useCase.create(request.toModel())

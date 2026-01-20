@@ -21,7 +21,7 @@ fun Application.configureAuthentication(koin: Koin) {
                 if (result.isValid && result.role in listOf("ADMIN")) {
                     UserIdPrincipal(result.userId.toString())
                 } else {
-                    respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")
+                    respond(HttpStatusCode.Unauthorized)
                 }
             }
         }
@@ -33,7 +33,7 @@ fun Application.configureAuthentication(koin: Koin) {
                 if (result.isValid && result.role in listOf("ADMIN", "ATTENDANT")) {
                     UserIdPrincipal(result.userId.toString())
                 } else {
-                    respond(HttpStatusCode.Unauthorized, "Token is not valid or has expired")
+                    respond(HttpStatusCode.Unauthorized)
                 }
             }
         }

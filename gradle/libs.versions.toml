@@ -18,7 +18,6 @@ shedlock = "7.5.0"
 mailersend = "1.4.1"
 mockk = "1.14.7"
 sonarqube = "5.1.0.4882"
-owasp-dependencycheck = "12.1.1"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -82,4 +81,3 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
-owasp-dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "owasp-dependencycheck" }

@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "auto-repair-shop"]
+      test: ["CMD", "pg_isready", "-U", "app", "-d", "auto-repair-shop"]
       interval: 5s
       timeout: 3s
       retries: 5
