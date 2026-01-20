@@ -2,7 +2,7 @@ package br.com.soat.transaction
 
 import br.com.soat.IntegrationTest
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.supply.SupplyRepository
+import br.com.soat.supply.repository.SupplyRepository
 import br.com.soat.supply.createSupply
 import java.math.BigDecimal
 import org.junit.jupiter.api.Assertions.assertEquals

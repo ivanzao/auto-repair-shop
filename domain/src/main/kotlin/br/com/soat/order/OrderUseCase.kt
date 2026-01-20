@@ -10,10 +10,10 @@ import br.com.soat.order.exception.OrderNotFoundException
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderMetrics
 import br.com.soat.order.model.OrderSchedule
-import br.com.soat.order.model.OrderService
-import br.com.soat.order.model.event.OrderCompletedEvent
-import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
-import br.com.soat.order.model.event.OrderInProgressEvent
+import br.com.soat.order.event.OrderCompletedEvent
+import br.com.soat.order.event.OrderDiagnoseFinishedEvent
+import br.com.soat.order.event.OrderInProgressEvent
+import br.com.soat.order.exception.ServiceNotFoundException
 import br.com.soat.order.model.request.CreateOrderRequest
 import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
 import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
@@ -22,8 +22,8 @@ import br.com.soat.order.repository.OrderApprovalTokenRepository
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
-import br.com.soat.order.repository.OrderServiceRepository
-import br.com.soat.service.exception.ServiceNotFoundException
+import br.com.soat.service.model.Service
+import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.model.Page
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.user.UserRepository
@@ -39,7 +39,7 @@ class OrderUseCase(
     private val vehicleRepository: VehicleRepository,
     private val userRepository: UserRepository,
     private val orderRepository: OrderRepository,
-    private val serviceRepository: OrderServiceRepository,
+    private val serviceRepository: ServiceRepository,
     private val eventRepository: EventRepository,
     private val orderScheduleRepository: OrderScheduleRepository,
     private val orderApprovalTokenRepository: OrderApprovalTokenRepository,
@@ -186,7 +186,7 @@ class OrderUseCase(
         orderApprovalTokenRepository.findById(approvalTokenId)
             ?.takeIf { it.isValid() }
 
-    private fun validateRequestedServicesExists(foundServices: List<OrderService>, servicesIds: List<UUID>) {
+    private fun validateRequestedServicesExists(foundServices: List<Service>, servicesIds: List<UUID>) {
         servicesIds.firstOrNull { it !in foundServices.map { service -> service.id } }
             ?.let { throw ServiceNotFoundException(it) }
     }

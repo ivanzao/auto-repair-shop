@@ -1,6 +1,7 @@
 package br.com.soat.user
 
 import br.com.soat.security.HashService
+import br.com.soat.user.exception.UserNotFoundException
 import br.com.soat.user.model.CreateUserRequest
 import br.com.soat.user.model.UpdateUserRequest
 import br.com.soat.user.model.User
@@ -11,8 +12,7 @@ class UserUseCase(
     private val hashService: HashService,
 ) {
 
-    fun findById(id: UUID): User? = storagePort.findById(id)
-
+    fun findById(id: UUID) = storagePort.findById(id) ?: throw UserNotFoundException(id)
     fun findAll(): List<User> = storagePort.findAll()
 
     fun create(request: CreateUserRequest): User {
@@ -32,8 +32,8 @@ class UserUseCase(
         )
     }
 
-    fun update(id: UUID, request: UpdateUserRequest): User? {
-        val existingUser = storagePort.findById(id) ?: return null
+    fun update(id: UUID, request: UpdateUserRequest): User {
+        val existingUser = storagePort.findById(id) ?: throw UserNotFoundException(id)
 
         val updatedUser = existingUser.copy(
             name = request.name,
@@ -46,9 +46,7 @@ class UserUseCase(
         return storagePort.update(updatedUser)
     }
 
-    fun delete(id: UUID): Boolean {
-        val existingUser = storagePort.findById(id) ?: return false
-        storagePort.delete(existingUser.id)
-        return true
+    fun delete(id: UUID) {
+        storagePort.delete(id)
     }
 }

@@ -22,7 +22,7 @@ class JWTAuthenticationTokenProvider(
         user: User,
         expiresAt: LocalDateTime
     ): String = JWT.create()
-        .withIssuer("https://my-auth-service")
+        .withIssuer("https://auto-repair-shop")
         .withAudience("https://my-api/secure")
         .withSubject(user.id.toString())
         .withClaim("role", user.role.name)

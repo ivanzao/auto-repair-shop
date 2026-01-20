@@ -4,6 +4,7 @@ import br.com.soat.IntegrationTest
 import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
 import br.com.soat.user.createUser
+import br.com.soat.user.model.User
 import java.time.LocalDateTime
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -16,30 +17,8 @@ class CustomerIntegrationTest : IntegrationTest() {
     private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
 
     @Test
-    fun `should create customer successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-
-        val requestDto = CreateCustomerRequestDTO(
-            name = "Beltrano",
-            document = "98765432100",
-            email = "beltrano@example.com",
-            contact = "11988888888"
-        )
-
-        val createCustomerResponse = http.createCustomer(requestDto, bearerToken)
-        assertEquals(201, createCustomerResponse.statusCode(), "HTTP status code must be 201 Created")
-
-        val createdCustomer = customerRepository.findById(UUID.fromString(createCustomerResponse.body().id))!!
-        assertEquals(requestDto.name, createdCustomer.name)
-        assertEquals(requestDto.document, createdCustomer.document.value)
-        assertEquals(requestDto.email, createdCustomer.email.value)
-        assertEquals(requestDto.contact, createdCustomer.contact.value)
-    }
-
-    @Test
     fun `should get customer by id`() {
-        val user = createUser()
+        val user = createUser(role = User.Role.ATTENDANT)
         val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
 
         val createRequestDto = CreateCustomerRequestDTO(
@@ -61,6 +40,28 @@ class CustomerIntegrationTest : IntegrationTest() {
         assertEquals(createRequestDto.document, fetchedCustomer.document.value)
         assertEquals(createRequestDto.email, fetchedCustomer.email.value)
         assertEquals(createRequestDto.contact, fetchedCustomer.contact.value)
+    }
+
+    @Test
+    fun `should create customer successfully`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+
+        val requestDto = CreateCustomerRequestDTO(
+            name = "Beltrano",
+            document = "98765432100",
+            email = "beltrano@example.com",
+            contact = "11988888888"
+        )
+
+        val createCustomerResponse = http.createCustomer(requestDto, bearerToken)
+        assertEquals(201, createCustomerResponse.statusCode(), "HTTP status code must be 201 Created")
+
+        val createdCustomer = customerRepository.findById(UUID.fromString(createCustomerResponse.body().id))!!
+        assertEquals(requestDto.name, createdCustomer.name)
+        assertEquals(requestDto.document, createdCustomer.document.value)
+        assertEquals(requestDto.email, createdCustomer.email.value)
+        assertEquals(requestDto.contact, createdCustomer.contact.value)
     }
 
     @Test

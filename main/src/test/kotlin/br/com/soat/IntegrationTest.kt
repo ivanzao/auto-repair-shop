@@ -90,7 +90,7 @@ abstract class IntegrationTest {
     fun tearDown() {
         server.stop()
         postgresContainer.stop()
-
+        get<ScheduledTaskRunner>().stop()
         stopKoin()
     }
 

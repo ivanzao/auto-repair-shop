@@ -3,6 +3,7 @@ package br.com.soat.supply
 import br.com.soat.IntegrationTest
 import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.supply.dto.CreateSupplyRequestDTO
+import br.com.soat.supply.repository.SupplyRepository
 import br.com.soat.user.createUser
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -15,28 +16,6 @@ class SupplyIntegrationTest : IntegrationTest() {
 
     private val supplyRepository: SupplyRepository by lazy { get<SupplyRepository>() }
     private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
-
-    @Test
-    fun `should create supply successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-
-        val requestDto = CreateSupplyRequestDTO(
-            name = "Parafuso",
-            description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-            quantity = 3176,
-            price = BigDecimal("15.00"),
-        )
-
-        val createSupplyResponse = http.createSupply(requestDto, bearerToken)
-        assertEquals(201, createSupplyResponse.statusCode(), "HTTP status code must be 201 Created")
-
-        val createdSupply = supplyRepository.findById(createSupplyResponse.body().id)!!
-        assertEquals(requestDto.name, createdSupply.name)
-        assertEquals(requestDto.description, createdSupply.description)
-        assertEquals(requestDto.price, createdSupply.price)
-        assertEquals(requestDto.quantity, createdSupply.quantityInStock)
-    }
 
     @Test
     fun `should get supply by id`() {
@@ -62,6 +41,28 @@ class SupplyIntegrationTest : IntegrationTest() {
         assertEquals(createRequestDto.description, fetchedSupply.description)
         assertEquals(createRequestDto.price, fetchedSupply.price)
         assertEquals(createRequestDto.quantity, fetchedSupply.quantityInStock)
+    }
+
+    @Test
+    fun `should create supply successfully`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+
+        val requestDto = CreateSupplyRequestDTO(
+            name = "Parafuso",
+            description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+            quantity = 3176,
+            price = BigDecimal("15.00"),
+        )
+
+        val createSupplyResponse = http.createSupply(requestDto, bearerToken)
+        assertEquals(201, createSupplyResponse.statusCode(), "HTTP status code must be 201 Created")
+
+        val createdSupply = supplyRepository.findById(createSupplyResponse.body().id)!!
+        assertEquals(requestDto.name, createdSupply.name)
+        assertEquals(requestDto.description, createdSupply.description)
+        assertEquals(requestDto.price, createdSupply.price)
+        assertEquals(requestDto.quantity, createdSupply.quantityInStock)
     }
 
     @Test

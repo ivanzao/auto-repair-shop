@@ -1,14 +1,14 @@
-package br.com.soat.event.handler
+package br.com.soat.supply.model.event.handler
 
-import br.com.soat.event.EventHandler
-import br.com.soat.order.model.event.OrderDiagnoseFinishedEvent
+import br.com.soat.event.handler.EventHandler
 import br.com.soat.event.model.DomainEvent
-import br.com.soat.supply.service.SupplyStockListenerService
+import br.com.soat.order.event.OrderDiagnoseFinishedEvent
+import br.com.soat.supply.SupplyStockService
 import kotlin.reflect.KClass
 import org.slf4j.LoggerFactory
 
 class OrderDiagnoseFinishedEventHandler(
-    private val supplyStockListenerService: SupplyStockListenerService
+    private val supplyStockListenerService: SupplyStockService
 ) : EventHandler {
 
     private val logger = LoggerFactory.getLogger(OrderDiagnoseFinishedEventHandler::class.java)

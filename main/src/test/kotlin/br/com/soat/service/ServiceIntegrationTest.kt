@@ -2,7 +2,7 @@ package br.com.soat.service
 
 import br.com.soat.IntegrationTest
 import br.com.soat.auth.port.AuthenticationTokenProvider
-import br.com.soat.order.repository.OrderServiceRepository
+import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.service.dto.CreateServiceRequestDTO
 import br.com.soat.user.createUser
 import java.math.BigDecimal
@@ -13,29 +13,8 @@ import org.junit.jupiter.api.Test
 
 class ServiceIntegrationTest : IntegrationTest() {
 
-    private val serviceRepository: OrderServiceRepository by lazy { get<OrderServiceRepository>() }
+    private val serviceRepository: ServiceRepository by lazy { get<ServiceRepository>() }
     private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
-
-    @Test
-    fun `should create service successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-
-        val requestDto = CreateServiceRequestDTO(
-            name = "Troca de óleo",
-            description = "Serviço de troca de óleo do motor",
-            price = BigDecimal("150.00"),
-            requiredSupplies = emptyList()
-        )
-
-        val createServiceResponse = http.createService(requestDto, bearerToken)
-        assertEquals(201, createServiceResponse.statusCode(), "HTTP status code must be 201 Created")
-
-        val createdService = serviceRepository.findById(createServiceResponse.body().id)!!
-        assertEquals(requestDto.name, createdService.name)
-        assertEquals(requestDto.description, createdService.description)
-        assertEquals(requestDto.price, createdService.price)
-    }
 
     @Test
     fun `should get service by id`() {
@@ -92,6 +71,37 @@ class ServiceIntegrationTest : IntegrationTest() {
     }
 
     @Test
+    fun `should return 404 when getting non-existent service`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+
+        val nonExistentId = java.util.UUID.randomUUID()
+        val getResponse = http.getService(nonExistentId, bearerToken)
+        assertEquals(404, getResponse.statusCode(), "HTTP status code must be 404 Not Found")
+    }
+
+    @Test
+    fun `should create service successfully`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+
+        val requestDto = CreateServiceRequestDTO(
+            name = "Troca de óleo",
+            description = "Serviço de troca de óleo do motor",
+            price = BigDecimal("150.00"),
+            requiredSupplies = emptyList()
+        )
+
+        val createServiceResponse = http.createService(requestDto, bearerToken)
+        assertEquals(201, createServiceResponse.statusCode(), "HTTP status code must be 201 Created")
+
+        val createdService = serviceRepository.findById(createServiceResponse.body().id)!!
+        assertEquals(requestDto.name, createdService.name)
+        assertEquals(requestDto.description, createdService.description)
+        assertEquals(requestDto.price, createdService.price)
+    }
+
+    @Test
     fun `should update service`() {
         val user = createUser()
         val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
@@ -124,6 +134,23 @@ class ServiceIntegrationTest : IntegrationTest() {
     }
 
     @Test
+    fun `should return 404 when updating non-existent service`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+
+        val nonExistentId = java.util.UUID.randomUUID()
+        val updateRequestDto = CreateServiceRequestDTO(
+            name = "Non existent",
+            description = "Non existent service",
+            price = BigDecimal("100.00"),
+            requiredSupplies = emptyList()
+        )
+
+        val updateResponse = http.updateService(nonExistentId, updateRequestDto, bearerToken)
+        assertEquals(404, updateResponse.statusCode(), "HTTP status code must be 404 Not Found")
+    }
+
+    @Test
     fun `should delete service`() {
         val user = createUser()
         val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
@@ -147,33 +174,6 @@ class ServiceIntegrationTest : IntegrationTest() {
 
         val deletedService = serviceRepository.findById(serviceId)
         assertNull(deletedService, "Service should be deleted from database")
-    }
-
-    @Test
-    fun `should return 404 when getting non-existent service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-
-        val nonExistentId = java.util.UUID.randomUUID()
-        val getResponse = http.getService(nonExistentId, bearerToken)
-        assertEquals(404, getResponse.statusCode(), "HTTP status code must be 404 Not Found")
-    }
-
-    @Test
-    fun `should return 404 when updating non-existent service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-
-        val nonExistentId = java.util.UUID.randomUUID()
-        val updateRequestDto = CreateServiceRequestDTO(
-            name = "Non existent",
-            description = "Non existent service",
-            price = BigDecimal("100.00"),
-            requiredSupplies = emptyList()
-        )
-
-        val updateResponse = http.updateService(nonExistentId, updateRequestDto, bearerToken)
-        assertEquals(404, updateResponse.statusCode(), "HTTP status code must be 404 Not Found")
     }
 
     @Test

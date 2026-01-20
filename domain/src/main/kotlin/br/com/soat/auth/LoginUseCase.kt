@@ -1,5 +1,7 @@
 package br.com.soat.auth
 
+import br.com.soat.auth.exception.InvalidLoginCredentialsException
+import br.com.soat.auth.exception.InvalidRefreshTokenException
 import br.com.soat.auth.model.AuthenticateRequest
 import br.com.soat.auth.model.AuthenticateResponse
 import br.com.soat.auth.model.RefreshToken
@@ -27,14 +29,13 @@ class LoginUseCase(
 
     fun login(request: AuthenticateRequest): AuthenticateResponse {
         val user = userRepository.findByEmail(request.email)
-            ?: throw IllegalStateException("User not found")
+            ?: throw InvalidLoginCredentialsException()
 
         if (!hashService.check(request.password, user.hashedPassword))
-            throw IllegalStateException("Invalid password")
+            throw InvalidLoginCredentialsException()
 
         val tokenExpiresAt = getTokenExpiresAt()
         val accessToken = authenticationTokenProvider.generate(user, tokenExpiresAt)
-
         val refreshToken = refreshTokenRepository.save(RefreshToken(user = user))
 
         return AuthenticateResponse(
@@ -44,16 +45,15 @@ class LoginUseCase(
         )
     }
 
-    fun refresh(refreshToken: UUID): AuthenticateResponse {
-        val currentRefreshToken = refreshTokenRepository.findByToken(refreshToken)
-            ?: throw IllegalStateException("RefreshToken not found")
+    fun refresh(token: UUID): AuthenticateResponse {
+        val refreshToken = refreshTokenRepository.findByToken(token) ?: throw InvalidRefreshTokenException()
 
         val tokenExpiresAt = getTokenExpiresAt()
-        val accessToken = authenticationTokenProvider.generate(currentRefreshToken.user, tokenExpiresAt)
+        val accessToken = authenticationTokenProvider.generate(refreshToken.user, tokenExpiresAt)
 
         val newRefreshToken = tx.inTransaction {
-            refreshTokenRepository.delete(currentRefreshToken.token)
-            refreshTokenRepository.save(RefreshToken(user = currentRefreshToken.user))
+            refreshTokenRepository.delete(refreshToken.token)
+            refreshTokenRepository.save(RefreshToken(user = refreshToken.user))
         }
 
         return AuthenticateResponse(

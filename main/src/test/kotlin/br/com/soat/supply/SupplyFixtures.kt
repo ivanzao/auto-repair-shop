@@ -2,6 +2,7 @@ package br.com.soat.supply
 
 import br.com.soat.IntegrationTest
 import br.com.soat.supply.model.Supply
+import br.com.soat.supply.repository.SupplyRepository
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID

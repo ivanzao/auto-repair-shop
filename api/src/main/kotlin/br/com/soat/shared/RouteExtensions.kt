@@ -2,7 +2,6 @@ package br.com.soat.shared
 
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.routing.RoutingCall
-import io.ktor.server.routing.RoutingContext
 import java.util.UUID
 
 fun RoutingCall.getUUIDPathParameter(name: String): UUID {

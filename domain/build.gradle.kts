@@ -1,9 +1,3 @@
-tasks {
-    test {
-        useJUnitPlatform()
-    }
-}
-
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.slf4j.api)

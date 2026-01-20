@@ -1,4 +1,4 @@
-package br.com.soat.order.model.event
+package br.com.soat.order.event
 
 import br.com.soat.event.model.DomainEvent
 import java.time.LocalDateTime

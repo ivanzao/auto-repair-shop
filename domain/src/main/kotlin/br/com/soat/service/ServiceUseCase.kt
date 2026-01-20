@@ -1,20 +1,21 @@
 package br.com.soat.service
 
-import br.com.soat.order.model.OrderService
-import br.com.soat.order.repository.OrderServiceRepository
+import br.com.soat.order.exception.ServiceNotFoundException
+import br.com.soat.service.model.Service
 import br.com.soat.service.model.request.CreateServiceRequest
+import br.com.soat.service.repository.ServiceRepository
 import java.util.UUID
 
 class ServiceUseCase(
-    private val repository: OrderServiceRepository
+    private val repository: ServiceRepository
 ) {
 
-    fun findById(id: UUID) = repository.findById(id)
+    fun findById(id: UUID) = repository.findById(id) ?: throw ServiceNotFoundException(id)
     fun findAll() = repository.findAll()
 
     fun create(request: CreateServiceRequest) =
         repository.create(
-            OrderService(
+            Service(
                 name = request.name,
                 description = request.description,
                 price = request.price,
@@ -22,10 +23,8 @@ class ServiceUseCase(
             )
         )
 
-    fun update(id: UUID, request: CreateServiceRequest): OrderService {
-        val existingService = repository.findById(id) ?:
-            throw IllegalStateException("Trying to update a non-existing service $id")
-
+    fun update(id: UUID, request: CreateServiceRequest): Service {
+        val existingService = repository.findById(id) ?: throw ServiceNotFoundException(id)
         return repository.update(
             existingService.copy(
                 name = request.name,

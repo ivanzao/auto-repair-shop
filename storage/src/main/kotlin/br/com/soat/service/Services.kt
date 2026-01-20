@@ -1,6 +1,6 @@
 package br.com.soat.service
 
-import br.com.soat.order.model.OrderService
+import br.com.soat.service.model.Service
 import br.com.soat.supply.Supplies
 import br.com.soat.supply.model.SupplyRequirement
 import kotlinx.datetime.toJavaLocalDateTime
@@ -33,7 +33,7 @@ object ServiceSupplies : Table("service_supplies") {
     }
 }
 
-fun ResultRow.toService(supplies: List<SupplyRequirement>): OrderService = OrderService(
+fun ResultRow.toService(supplies: List<SupplyRequirement>) = Service(
     id = this[Services.id],
     createdAt = this[Services.createdAt].toJavaLocalDateTime(),
     modifiedAt = this[Services.modifiedAt].toJavaLocalDateTime(),

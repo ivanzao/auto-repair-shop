@@ -16,7 +16,6 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.jackson.datatype.jsr310)
 
-    // Logging
     implementation(libs.slf4j.api)
     runtimeOnly(libs.logback.classic)
 }

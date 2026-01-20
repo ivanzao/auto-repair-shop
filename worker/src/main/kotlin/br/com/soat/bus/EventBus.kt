@@ -9,14 +9,14 @@ class EventBus {
     private val channel = Channel<DomainEvent>(Channel.UNLIMITED)
 
     suspend fun publish(event: DomainEvent) {
-        logger.debug("Enqueuing event ${event::class.simpleName} with id ${event.id}")
+        logger.info("Enqueuing event ${event::class.simpleName} with id ${event.id}")
         channel.send(event)
     }
 
     suspend fun consume(handler: suspend (DomainEvent) -> Unit) {
         for (event in channel) {
             try {
-                logger.debug("Consuming event ${event::class.simpleName} with id ${event.id}")
+                logger.info("Consuming event ${event::class.simpleName} with id ${event.id}")
                 handler(event)
             } catch (e: Exception) {
                 logger.error("Error consuming event ${event.id}", e)

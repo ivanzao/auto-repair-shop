@@ -11,20 +11,6 @@ import org.jetbrains.exposed.sql.update
 
 class OrderApprovalTokenPostgresRepository : OrderApprovalTokenRepository {
 
-    override fun save(token: OrderApprovalToken): OrderApprovalToken = transaction {
-        OrderApprovalTokens.insert {
-            it[id] = token.id
-            it[createdAt] = token.createdAt.toKotlinLocalDateTime()
-            it[modifiedAt] = token.modifiedAt.toKotlinLocalDateTime()
-            it[version] = token.version
-            it[orderId] = token.orderId
-            it[expiresAt] = token.expiresAt.toKotlinLocalDateTime()
-            it[usedAt] = token.usedAt?.toKotlinLocalDateTime()
-        }.resultedValues?.singleOrNull()
-            ?.toOrderApprovalToken()
-            ?: throw IllegalStateException("Failed to save OrderApprovalToken")
-    }
-
     override fun findById(id: UUID): OrderApprovalToken? = transaction {
         OrderApprovalTokens
             .selectAll()
@@ -41,6 +27,20 @@ class OrderApprovalTokenPostgresRepository : OrderApprovalTokenRepository {
             .limit(1)
             .firstOrNull()
             ?.toOrderApprovalToken()
+    }
+
+    override fun save(token: OrderApprovalToken): OrderApprovalToken = transaction {
+        OrderApprovalTokens.insert {
+            it[id] = token.id
+            it[createdAt] = token.createdAt.toKotlinLocalDateTime()
+            it[modifiedAt] = token.modifiedAt.toKotlinLocalDateTime()
+            it[version] = token.version
+            it[orderId] = token.orderId
+            it[expiresAt] = token.expiresAt.toKotlinLocalDateTime()
+            it[usedAt] = token.usedAt?.toKotlinLocalDateTime()
+        }.resultedValues?.singleOrNull()
+            ?.toOrderApprovalToken()
+            ?: throw IllegalStateException("Failed to save OrderApprovalToken")
     }
 
     override fun update(token: OrderApprovalToken): OrderApprovalToken = transaction {

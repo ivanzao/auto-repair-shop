@@ -40,7 +40,6 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.jackson.dataformat.yaml)
 
-    // Logging
     implementation(libs.slf4j.api)
     runtimeOnly(libs.logback.classic)
 
@@ -48,10 +47,10 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.jackson.module.kotlin)
     testImplementation(libs.jackson.databind)
-    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.jackson.datatype.jsr310)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.exposed.core)
     testImplementation(libs.mockk)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

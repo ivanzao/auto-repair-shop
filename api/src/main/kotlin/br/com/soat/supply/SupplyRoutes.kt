@@ -36,15 +36,12 @@ fun Application.supplyRoutes(koin: Koin) {
                     val id = call.getUUIDPathParameter("id")
                     val supply = useCase.findById(id)
 
-                    if (supply != null) {
-                        call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(supply))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(supply))
                 }
 
                 get("/supplies") {
                     val supplies = useCase.findAll()
+
                     call.respond(HttpStatusCode.OK, supplies.map { SupplyResponseDTO.from(it) })
                 }
 
@@ -53,22 +50,14 @@ fun Application.supplyRoutes(koin: Koin) {
                     val request = call.receive<CreateSupplyRequestDTO>()
                     val updatedSupply = useCase.update(id, request.toModel())
 
-                    if (updatedSupply != null) {
-                        call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(updatedSupply))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, SupplyResponseDTO.from(updatedSupply))
                 }
 
                 delete("/supplies/{id}") {
                     val id = call.getUUIDPathParameter("id")
-                    val deleted = useCase.delete(id)
+                    useCase.delete(id)
 
-                    if (deleted) {
-                        call.respond(HttpStatusCode.NoContent)
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.NoContent)
                 }
             }
         }

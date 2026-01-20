@@ -1,5 +1,6 @@
-package br.com.soat.command.handler
+package br.com.soat.order.command.handler
 
+import br.com.soat.command.handler.CommandHandler
 import br.com.soat.command.model.Command
 import br.com.soat.order.OrderListenerUseCase
 import br.com.soat.order.command.SendQuoteToClientCommand

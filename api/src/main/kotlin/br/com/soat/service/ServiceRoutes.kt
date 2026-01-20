@@ -35,12 +35,7 @@ fun Application.serviceRoutes(koin: Koin) {
                 get("/services/{id}") {
                     val id = call.getUUIDPathParameter("id")
                     val service = useCase.findById(id)
-
-                    if (service != null) {
-                        call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(service))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(service))
                 }
 
                 get("/services") {
@@ -51,23 +46,14 @@ fun Application.serviceRoutes(koin: Koin) {
                 put("/services/{id}") {
                     val id = call.getUUIDPathParameter("id")
                     val request = call.receive<CreateServiceRequestDTO>()
-                    try {
-                        val updatedService = useCase.update(id, request.toModel())
-                        call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(updatedService))
-                    } catch (e: IllegalStateException) {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    val updatedService = useCase.update(id, request.toModel())
+                    call.respond(HttpStatusCode.OK, ServiceResponseDTO.from(updatedService))
                 }
 
                 delete("/services/{id}") {
                     val id = call.getUUIDPathParameter("id")
-                    val deleted = useCase.delete(id)
-
-                    if (deleted) {
-                        call.respond(HttpStatusCode.NoContent)
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    useCase.delete(id)
+                    call.respond(HttpStatusCode.NoContent)
                 }
             }
         }

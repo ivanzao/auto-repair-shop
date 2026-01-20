@@ -1,4 +1,4 @@
-package br.com.soat.event
+package br.com.soat.event.handler
 
 import br.com.soat.event.model.DomainEvent
 import kotlin.reflect.KClass

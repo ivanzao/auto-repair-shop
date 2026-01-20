@@ -29,31 +29,6 @@ class VehicleIntegrationTest : IntegrationTest() {
     }
 
     @Test
-    fun `should create vehicle successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-        val clientId = createCustomer(bearerToken)
-
-        val requestDto = CreateVehicleRequestDTO(
-            clientId = clientId,
-            plate = "ABC1234",
-            brand = "Toyota",
-            model = "Corolla",
-            year = 2024
-        )
-
-        val createVehicleResponse = http.createVehicle(requestDto, bearerToken)
-        assertEquals(201, createVehicleResponse.statusCode(), "HTTP status code must be 201 Created")
-
-        val createdVehicle = vehicleRepository.findById(UUID.fromString(createVehicleResponse.body().id))!!
-        assertEquals(requestDto.plate, createdVehicle.plate.value)
-        assertEquals(requestDto.brand, createdVehicle.brand)
-        assertEquals(requestDto.model, createdVehicle.model)
-        assertEquals(requestDto.year, createdVehicle.year)
-        assertEquals(requestDto.clientId, createdVehicle.clientId)
-    }
-
-    @Test
     fun `should get vehicle by id`() {
         val user = createUser()
         val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
@@ -80,6 +55,31 @@ class VehicleIntegrationTest : IntegrationTest() {
         assertEquals(createRequestDto.model, fetchedVehicle.model)
         assertEquals(createRequestDto.year, fetchedVehicle.year)
         assertEquals(createRequestDto.clientId, fetchedVehicle.clientId)
+    }
+
+    @Test
+    fun `should create vehicle successfully`() {
+        val user = createUser()
+        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val clientId = createCustomer(bearerToken)
+
+        val requestDto = CreateVehicleRequestDTO(
+            clientId = clientId,
+            plate = "ABC1234",
+            brand = "Toyota",
+            model = "Corolla",
+            year = 2024
+        )
+
+        val createVehicleResponse = http.createVehicle(requestDto, bearerToken)
+        assertEquals(201, createVehicleResponse.statusCode(), "HTTP status code must be 201 Created")
+
+        val createdVehicle = vehicleRepository.findById(UUID.fromString(createVehicleResponse.body().id))!!
+        assertEquals(requestDto.plate, createdVehicle.plate.value)
+        assertEquals(requestDto.brand, createdVehicle.brand)
+        assertEquals(requestDto.model, createdVehicle.model)
+        assertEquals(requestDto.year, createdVehicle.year)
+        assertEquals(requestDto.clientId, createdVehicle.clientId)
     }
 
     @Test

@@ -1,11 +1,12 @@
 package br.com.soat.event
 
+import br.com.soat.event.handler.EventHandler
 import br.com.soat.event.model.DomainEvent
 import br.com.soat.event.model.EventStatus
 import br.com.soat.event.repository.EventRepository
 import org.slf4j.LoggerFactory
 
-class EventProcessor(
+class   EventProcessor(
     private val eventRepository: EventRepository,
     handlers: List<EventHandler>
 ) {

@@ -2,6 +2,7 @@ package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
 import br.com.soat.order.exception.IllegalOrderStateException
+import br.com.soat.service.model.Service
 import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.PhoneNumber
@@ -291,8 +292,8 @@ class OrderTest {
     fun `should add services to order`() {
         val order = createOrder()
         val services = listOf(
-            OrderService(name = "Oil Change", description = null, price = BigDecimal("50.00")),
-            OrderService(name = "Brake Inspection", description = null, price = BigDecimal("30.00"))
+            Service(name = "Oil Change", description = null, price = BigDecimal("50.00")),
+            Service(name = "Brake Inspection", description = null, price = BigDecimal("30.00"))
         )
 
         val result = order.addServices(services)
@@ -304,10 +305,10 @@ class OrderTest {
 
     @Test
     fun `should append services to existing ones`() {
-        val initialService = OrderService(name = "Initial Service", description = null, price = BigDecimal("10.00"))
+        val initialService = Service(name = "Initial Service", description = null, price = BigDecimal("10.00"))
         val order = createOrder().copy(services = listOf(initialService))
         val newServices = listOf(
-            OrderService(name = "New Service", description = null, price = BigDecimal("20.00"))
+            Service(name = "New Service", description = null, price = BigDecimal("20.00"))
         )
 
         val result = order.addServices(newServices)
@@ -321,7 +322,7 @@ class OrderTest {
     fun `should preserve immutability when adding services`() {
         val order = createOrder()
         val services = listOf(
-            OrderService(name = "Service", description = null, price = BigDecimal("10.00"))
+            Service(name = "Service", description = null, price = BigDecimal("10.00"))
         )
 
         val result = order.addServices(services)
@@ -429,7 +430,7 @@ class OrderTest {
     @Test
     fun `getSupplyRequirements should return service supplies when no extra supplies`() {
         val supplyId = UUID.randomUUID()
-        val service = OrderService(
+        val service = Service(
             name = "Service",
             description = null,
             price = BigDecimal("10.00"),
@@ -447,13 +448,13 @@ class OrderTest {
     @Test
     fun `getSupplyRequirements should consolidate supplies from multiple services`() {
         val supplyId = UUID.randomUUID()
-        val service1 = OrderService(
+        val service1 = Service(
             name = "Service 1",
             description = null,
             price = BigDecimal("10.00"),
             requiredSupplies = listOf(SupplyRequirement(supplyId, 2))
         )
-        val service2 = OrderService(
+        val service2 = Service(
             name = "Service 2",
             description = null,
             price = BigDecimal("20.00"),
@@ -471,7 +472,7 @@ class OrderTest {
     @Test
     fun `getSupplyRequirements should consolidate service supplies with extra supplies`() {
         val supplyId = UUID.randomUUID()
-        val service = OrderService(
+        val service = Service(
             name = "Service",
             description = null,
             price = BigDecimal("10.00"),
@@ -493,7 +494,7 @@ class OrderTest {
     fun `getSupplyRequirements should keep different supplies separate`() {
         val supplyId1 = UUID.randomUUID()
         val supplyId2 = UUID.randomUUID()
-        val service = OrderService(
+        val service = Service(
             name = "Service",
             description = null,
             price = BigDecimal("10.00"),
@@ -516,7 +517,7 @@ class OrderTest {
     fun `getSupplyRequirements should consolidate multiple supplies from services and extra supplies`() {
         val supplyId1 = UUID.randomUUID()
         val supplyId2 = UUID.randomUUID()
-        val service1 = OrderService(
+        val service1 = Service(
             name = "Service 1",
             description = null,
             price = BigDecimal("10.00"),
@@ -525,7 +526,7 @@ class OrderTest {
                 SupplyRequirement(supplyId2, 2)
             )
         )
-        val service2 = OrderService(
+        val service2 = Service(
             name = "Service 2",
             description = null,
             price = BigDecimal("20.00"),

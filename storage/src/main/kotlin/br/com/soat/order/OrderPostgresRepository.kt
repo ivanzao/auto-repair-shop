@@ -3,7 +3,7 @@ package br.com.soat.order
 import br.com.soat.customer.Customers
 import br.com.soat.order.model.Order
 import br.com.soat.order.repository.OrderRepository
-import br.com.soat.order.repository.OrderServiceRepository
+import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.service.Services
 import br.com.soat.shared.model.Page
 import br.com.soat.supply.model.SupplyRequirement
@@ -23,7 +23,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
 class OrderPostgresRepository(
-    private val serviceRepository: OrderServiceRepository
+    private val serviceRepository: ServiceRepository
 ) : OrderRepository {
 
     override fun findAllPaginated(page: Int): Page<Order> = transaction {

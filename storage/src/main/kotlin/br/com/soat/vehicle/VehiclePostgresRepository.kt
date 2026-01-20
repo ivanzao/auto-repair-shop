@@ -20,6 +20,10 @@ class VehiclePostgresRepository : VehicleRepository {
             ?.toVehicle()
     }
 
+    override fun findAll(): List<Vehicle> = transaction {
+        Vehicles.selectAll().map { it.toVehicle() }
+    }
+
     override fun create(vehicle: Vehicle) = transaction {
         Vehicles.insert {
             it[id] = vehicle.id
@@ -36,21 +40,17 @@ class VehiclePostgresRepository : VehicleRepository {
             ?: throw IllegalStateException("An error occurred while saving Vehicle")
     }
 
-    override fun findAll(): List<Vehicle> = transaction {
-        Vehicles.selectAll().map { it.toVehicle() }
-    }
-
     override fun update(vehicle: Vehicle): Vehicle = transaction {
         Vehicles.update({ Vehicles.id eq vehicle.id }) {
             it[modifiedAt] = vehicle.modifiedAt.toKotlinLocalDateTime()
-            it[version] = vehicle.version
+            it[version] = vehicle.version + 1
             it[client] = vehicle.clientId
             it[plate] = vehicle.plate
             it[brand] = vehicle.brand
             it[model] = vehicle.model
             it[year] = vehicle.year
         }
-        
+
         findById(vehicle.id) ?: throw IllegalStateException("Vehicle not found after update")
     }
 

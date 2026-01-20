@@ -16,7 +16,7 @@ class CommandProcessor(
     private val handlerMap: Map<String, CommandHandler> = handlers.associateBy { it.commandType.qualifiedName!! }
 
     fun processPendingCommands() {
-        commandRepository.findPendingCommands(10).forEach {
+        commandRepository.findPendingCommands(100).forEach {
             command -> process(command)
         }
     }

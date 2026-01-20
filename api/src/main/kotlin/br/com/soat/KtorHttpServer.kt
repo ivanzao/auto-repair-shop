@@ -1,7 +1,12 @@
 package br.com.soat
 
 import br.com.soat.auth.authenticationRoutes
+import br.com.soat.auth.exception.InvalidLoginCredentialsException
+import br.com.soat.auth.exception.InvalidRefreshTokenException
 import br.com.soat.customer.customerRoutes
+import br.com.soat.customer.exception.CustomerNotFoundException
+import br.com.soat.order.exception.OrderNotFoundException
+import br.com.soat.order.exception.ServiceNotFoundException
 import br.com.soat.order.orderRoutes
 import br.com.soat.security.configureAuthentication
 import br.com.soat.service.serviceRoutes
@@ -10,8 +15,12 @@ import br.com.soat.shared.dto.FieldError
 import br.com.soat.shared.dto.ValidationErrorDTO
 import br.com.soat.shared.dto.toErrorResponseDTO
 import br.com.soat.shared.exception.ApplicationException
+import br.com.soat.supply.exception.SupplyNotFoundException
 import br.com.soat.supply.supplyRoutes
+import br.com.soat.user.exception.UserNotFoundException
 import br.com.soat.user.userRoutes
+import br.com.soat.vehicle.exception.VehicleNotFoundException
+import br.com.soat.vehicle.model.Vehicle
 import br.com.soat.vehicle.vehicleRoutes
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonMappingException
@@ -23,6 +32,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.datatype.jsr310.ser.ZonedDateTimeSerializer
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.HttpStatusCode.Companion.BadRequest
+import io.ktor.http.HttpStatusCode.Companion.InternalServerError
+import io.ktor.http.HttpStatusCode.Companion.NotFound
+import io.ktor.http.HttpStatusCode.Companion.Unauthorized
+import io.ktor.http.HttpStatusCode.Companion.UnprocessableEntity
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -106,18 +120,32 @@ class KtorHttpServer(
 
     private fun Application.configureErrorHandling() {
         install(StatusPages) {
-            exception<ApplicationException> { call, cause ->
-                call.respond(HttpStatusCode.UnprocessableEntity, cause.toErrorResponseDTO())
-            }
-
-            exception<BadRequestException> { call, cause ->
-                val fieldErrors = extractFieldErrors(cause)
-                call.respond(HttpStatusCode.BadRequest, ValidationErrorDTO(fieldErrors))
-            }
-
             exception<Throwable> { call, cause ->
-                val message = "${cause::class.simpleName}: ${cause.message}"
-                call.respond(HttpStatusCode.InternalServerError, ErrorResponseDTO.internalServerError(message))
+                val (statusCode, body) = when (cause) {
+                    is InvalidLoginCredentialsException,
+                        is InvalidRefreshTokenException -> Unauthorized to cause.toErrorResponseDTO()
+
+                    is OrderNotFoundException,
+                        is ServiceNotFoundException,
+                        is SupplyNotFoundException,
+                        is CustomerNotFoundException,
+                        is VehicleNotFoundException,
+                        is UserNotFoundException -> NotFound to cause.toErrorResponseDTO()
+
+                    is ApplicationException -> UnprocessableEntity to cause.toErrorResponseDTO()
+
+                    is BadRequestException -> {
+                        val fieldErrors = extractFieldErrors(cause)
+                        BadRequest to ValidationErrorDTO(fieldErrors)
+                    }
+
+                    else -> {
+                        val message = "${cause::class.simpleName}: ${cause.message}"
+                        InternalServerError to ErrorResponseDTO.internalServerError(message)
+                    }
+                }
+
+                call.respond(statusCode, body)
             }
         }
     }

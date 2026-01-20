@@ -17,6 +17,14 @@ class CommandPostgresRepository : CommandRepository {
 
     private val objectMapper = ObjectMapper().findAndRegisterModules()
 
+    override fun findPendingCommands(limit: Int) = transaction {
+        Commands.selectAll()
+            .where { Commands.status eq CommandStatus.PENDING.name }
+            .orderBy(Commands.createdAt to SortOrder.ASC)
+            .limit(limit)
+            .map { it.toCommand() }
+    }
+
     override fun save(command: Command): Command = transaction {
         Commands.insert {
             it[id] = command.id
@@ -25,21 +33,9 @@ class CommandPostgresRepository : CommandRepository {
             it[status] = command.status.name
             it[type] = command::class.qualifiedName ?: "Unknown"
             it[payload] = objectMapper.writeValueAsString(command)
-        }
-        command
-    }
-
-    override fun findPendingCommands(limit: Int): List<Command> = transaction {
-        Commands.selectAll()
-            .where { Commands.status eq CommandStatus.PENDING.name }
-            .orderBy(Commands.createdAt to SortOrder.ASC)
-            .limit(limit)
-            .map { row ->
-                val typeName = row[Commands.type]
-                val payload = row[Commands.payload]
-                val clazz = Class.forName(typeName).kotlin
-                objectMapper.readValue(payload, clazz.java) as Command
-            }
+        }.resultedValues?.singleOrNull()
+            ?.toCommand()
+            ?: throw IllegalStateException("An error occurred while saving Command")
     }
 
     override fun updateStatus(id: UUID, status: CommandStatus) {

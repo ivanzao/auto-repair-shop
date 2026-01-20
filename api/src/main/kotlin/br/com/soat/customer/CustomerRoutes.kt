@@ -21,7 +21,7 @@ fun Application.customerRoutes(koin: Koin) {
 
     routing {
         route("/v1") {
-            authenticate("admin") {
+            authenticate("attendant") {
                 post("/customers") {
                     val request = call.receive<CreateCustomerRequestDTO>()
                     val createdCustomer = customerUseCase.create(request.toModel())
@@ -36,15 +36,12 @@ fun Application.customerRoutes(koin: Koin) {
                     val id = call.getUUIDPathParameter("id")
                     val customer = customerUseCase.findById(id)
 
-                    if (customer != null) {
-                        call.respond(HttpStatusCode.OK, CustomerResponseDTO.from(customer))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, CustomerResponseDTO.from(customer))
                 }
 
                 get("/customers") {
                     val customers = customerUseCase.findAll()
+
                     call.respond(HttpStatusCode.OK, customers.map { CustomerResponseDTO.from(it) })
                 }
 
@@ -58,13 +55,8 @@ fun Application.customerRoutes(koin: Koin) {
 
                 delete("/customers/{id}") {
                     val id = call.getUUIDPathParameter("id")
-                    val deleted = customerUseCase.delete(id)
-
-                    if (deleted) {
-                        call.respond(HttpStatusCode.NoContent)
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    customerUseCase.delete(id)
+                    call.respond(HttpStatusCode.NoContent)
                 }
             }
         }

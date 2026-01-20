@@ -1,7 +1,7 @@
 package br.com.soat.service.dto
 
 import br.com.soat.order.dto.SupplyRequirementDTO
-import br.com.soat.order.model.OrderService
+import br.com.soat.service.model.Service
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -13,7 +13,7 @@ data class ServiceResponseDTO(
     val requiredSupplies: List<SupplyRequirementDTO>
 ) {
     companion object {
-        fun from(service: OrderService) = ServiceResponseDTO(
+        fun from(service: Service) = ServiceResponseDTO(
             id = service.id,
             name = service.name,
             description = service.description,

@@ -18,7 +18,7 @@ import br.com.soat.order.repository.OrderApprovalTokenRepository
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
-import br.com.soat.supply.SupplyRepository
+import br.com.soat.supply.repository.SupplyRepository
 import br.com.soat.supply.createSupply
 import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.createUser

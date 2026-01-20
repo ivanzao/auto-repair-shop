@@ -1,8 +1,8 @@
-package br.com.soat.event.handler
+package br.com.soat.order.event.handler
 
-import br.com.soat.event.EventHandler
-import br.com.soat.order.OrderListenerUseCase
+import br.com.soat.event.handler.EventHandler
 import br.com.soat.event.model.DomainEvent
+import br.com.soat.order.OrderListenerUseCase
 import br.com.soat.supply.model.event.OrderSuppliesReservedEvent
 import kotlin.reflect.KClass
 import org.slf4j.LoggerFactory

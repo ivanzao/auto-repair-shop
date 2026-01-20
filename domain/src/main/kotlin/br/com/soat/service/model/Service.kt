@@ -1,11 +1,11 @@
-package br.com.soat.order.model
+package br.com.soat.service.model
 
 import br.com.soat.supply.model.SupplyRequirement
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
-data class OrderService(
+data class Service(
     val id: UUID = UUID.randomUUID(),
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val modifiedAt: LocalDateTime = LocalDateTime.now(),

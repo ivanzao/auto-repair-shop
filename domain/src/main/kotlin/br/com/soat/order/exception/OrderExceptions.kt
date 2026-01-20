@@ -7,3 +7,5 @@ class OrderNotFoundException(id: UUID) : ApplicationException("ORD-001", "Order 
 class IllegalOrderStateException(message: String) : ApplicationException("ORD-002", message)
 class IllegalOrderCommandException(message: String) : ApplicationException("ORD-003", message)
 class InvalidOrderApprovalTokenException : ApplicationException("ORD-004", "Invalid order approval token")
+
+class ServiceNotFoundException(id: UUID) : ApplicationException("SVC-001", "Service not found with id: $id")

@@ -17,30 +17,12 @@ import org.jetbrains.exposed.sql.update
 class EventPostgresRepository : EventRepository {
     private val objectMapper = ObjectMapper().findAndRegisterModules()
 
-    override fun save(event: DomainEvent): DomainEvent = transaction {
-        Events.insert {
-            it[id] = event.id
-            it[createdAt] = event.createdAt.toKotlinLocalDateTime()
-            it[modifiedAt] = event.modifiedAt.toKotlinLocalDateTime()
-            it[version] = event.version
-            it[type] = event::class.qualifiedName ?: "Unknown"
-            it[status] = EventStatus.PENDING.name
-            it[payload] = objectMapper.writeValueAsString(event)
-        }
-        event
-    }
-
     override fun findPendingEvents(limit: Int): List<DomainEvent> = transaction {
         Events.selectAll()
             .where { Events.status eq EventStatus.PENDING.name }
             .orderBy(Events.createdAt to SortOrder.ASC)
             .limit(limit)
-            .map { row ->
-                val typeName = row[Events.type]
-                val payload = row[Events.payload]
-                val clazz = Class.forName(typeName).kotlin
-                objectMapper.readValue(payload, clazz.java) as DomainEvent
-            }
+            .map { it.toDomainEvent() }
     }
 
     override fun findAllBy(type: String, status: EventStatus, limit: Int): List<DomainEvent> = transaction {
@@ -56,6 +38,26 @@ class EventPostgresRepository : EventRepository {
             }
     }
 
+    override fun isProcessed(eventId: UUID, consumerId: String): Boolean = transaction {
+        ProcessedEvents.selectAll()
+            .where { (ProcessedEvents.eventId eq eventId) and (ProcessedEvents.consumerId eq consumerId) }
+            .count() > 0
+    }
+
+    override fun save(event: DomainEvent): DomainEvent = transaction {
+        Events.insert {
+            it[id] = event.id
+            it[createdAt] = event.createdAt.toKotlinLocalDateTime()
+            it[modifiedAt] = event.modifiedAt.toKotlinLocalDateTime()
+            it[version] = event.version
+            it[type] = event::class.qualifiedName ?: "Unknown"
+            it[status] = EventStatus.PENDING.name
+            it[payload] = objectMapper.writeValueAsString(event)
+        }.resultedValues?.singleOrNull()
+            ?.toDomainEvent()
+            ?: throw IllegalStateException("An error occurred while saving Event")
+    }
+
     override fun markAsProcessed(eventId: UUID, consumerId: String) {
         transaction {
             ProcessedEvents.insert {
@@ -64,12 +66,6 @@ class EventPostgresRepository : EventRepository {
                 it[ProcessedEvents.processedAt] = LocalDateTime.now().toKotlinLocalDateTime()
             }
         }
-    }
-
-    override fun isProcessed(eventId: UUID, consumerId: String): Boolean = transaction {
-        ProcessedEvents.selectAll()
-            .where { (ProcessedEvents.eventId eq eventId) and (ProcessedEvents.consumerId eq consumerId) }
-            .count() > 0
     }
 
     override fun updateStatus(id: UUID, status: EventStatus) {

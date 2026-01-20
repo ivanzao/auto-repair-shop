@@ -8,11 +8,9 @@ dependencies {
 
     implementation(libs.hikari)
 
-    // Flyway
     implementation(libs.flyway.core)
     implementation(libs.flyway.postgresql)
 
-    // Logging
     implementation(libs.slf4j.api)
     runtimeOnly(libs.logback.classic)
 }

@@ -5,6 +5,7 @@ import br.com.soat.command.repository.CommandRepository
 import br.com.soat.order.command.SendQuoteToClientCommand
 import br.com.soat.mail.EmailService
 import br.com.soat.mail.model.OrderQuoteApprovalEmailInput
+import br.com.soat.order.exception.OrderNotFoundException
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderApprovalToken
 import br.com.soat.order.model.OrderExecutionMetric
@@ -12,7 +13,7 @@ import br.com.soat.order.repository.OrderApprovalTokenRepository
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.supply.SupplyRepository
+import br.com.soat.supply.repository.SupplyRepository
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -28,8 +29,7 @@ class OrderListenerUseCase(
 ) {
 
     fun sendQuoteToApproval(orderId: UUID) {
-        val order = orderRepository.findById(orderId)
-            ?: throw IllegalArgumentException("Order not found $orderId")
+        val order = orderRepository.findById(orderId) ?: throw OrderNotFoundException(orderId)
 
         val command = tx.inTransaction {
             orderRepository.update(order.waitingApproval())
@@ -40,8 +40,7 @@ class OrderListenerUseCase(
     }
 
     fun sendQuoteApprovalEmail(orderId: UUID) {
-        val order = orderRepository.findById(orderId)
-            ?: throw IllegalArgumentException("Order not found $orderId")
+        val order = orderRepository.findById(orderId) ?: throw OrderNotFoundException(orderId)
 
         val approvalToken = orderApprovalTokenRepository.save(
             OrderApprovalToken(

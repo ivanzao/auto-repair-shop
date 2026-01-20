@@ -1,10 +1,10 @@
-package br.com.soat.order.model.event
+package br.com.soat.order.event
 
 import br.com.soat.event.model.DomainEvent
 import java.time.LocalDateTime
 import java.util.UUID
 
-data class OrderInProgressEvent(
+data class OrderDiagnoseFinishedEvent(
     override val id: UUID = UUID.randomUUID(),
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     override val modifiedAt: LocalDateTime = LocalDateTime.now(),

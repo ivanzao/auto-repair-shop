@@ -2,6 +2,7 @@ package br.com.soat.supply
 
 import br.com.soat.exception.OptimisticLockException
 import br.com.soat.supply.model.Supply
+import br.com.soat.supply.repository.SupplyRepository
 import java.time.LocalDateTime.now
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -90,7 +91,6 @@ class SupplyPostgresRepository : SupplyRepository {
             .map { it.toSupply() }
     }
 
-    override fun delete(id: UUID) = transaction {
-        Supplies.deleteWhere { Supplies.id eq id }
-    } == 1
+    override fun delete(id: UUID) {
+        transaction { Supplies.deleteWhere { Supplies.id eq id } } }
 }

@@ -2,6 +2,7 @@ package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
 import br.com.soat.order.exception.IllegalOrderStateException
+import br.com.soat.service.model.Service
 import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
@@ -21,7 +22,7 @@ data class Order(
     val customer: Customer,
     val vehicle: Vehicle,
     val attendant: User,
-    val services: List<OrderService> = emptyList(),
+    val services: List<Service> = emptyList(),
     val extraSupplies: List<SupplyRequirement> = emptyList(),
 
     val description: String,
@@ -73,7 +74,7 @@ data class Order(
         return copy(status = Status.CANCELED)
     }
 
-    fun addServices(services: List<OrderService>) = copy(services = this.services + services)
+    fun addServices(services: List<Service>) = copy(services = this.services + services)
 
     fun addSupplyRequirements(supplyRequirements: List<SupplyRequirement>) = copy(extraSupplies = supplyRequirements)
 

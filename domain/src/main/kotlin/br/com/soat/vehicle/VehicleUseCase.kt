@@ -1,52 +1,43 @@
 package br.com.soat.vehicle
 
+import br.com.soat.vehicle.exception.VehicleNotFoundException
 import br.com.soat.vehicle.model.CreateVehicleRequest
 import br.com.soat.vehicle.model.Vehicle
-import br.com.soat.vehicle.VehicleRepository
+import java.util.UUID
 
 class VehicleUseCase(
     private val storagePort: VehicleRepository
 ) {
 
-    fun create(request: CreateVehicleRequest): Vehicle {
-        return storagePort.create(
-            Vehicle(
-                clientId = request.clientId,
-                plate = request.plate,
-                brand = request.brand,
-                model = request.model,
-                year = request.year,
-            )
+    fun findById(id: UUID) = storagePort.findById(id) ?: throw VehicleNotFoundException(id)
+    fun findAll(): List<Vehicle> = storagePort.findAll()
+
+    fun create(request: CreateVehicleRequest) = storagePort.create(
+        Vehicle(
+            clientId = request.clientId,
+            plate = request.plate,
+            brand = request.brand,
+            model = request.model,
+            year = request.year,
         )
-    }
+    )
 
-    fun findById(id: java.util.UUID): Vehicle? {
-        return storagePort.findById(id)
-    }
-
-    fun findAll(): List<Vehicle> {
-        return storagePort.findAll()
-    }
-
-    fun update(id: java.util.UUID, request: CreateVehicleRequest): Vehicle? {
-        val existingVehicle = storagePort.findById(id) ?: return null
-        
-        val updatedVehicle = existingVehicle.copy(
+    fun update(id: UUID, request: CreateVehicleRequest): Vehicle {
+        val vehicle = storagePort.findById(id) ?: throw VehicleNotFoundException(id)
+        val updatedVehicle = vehicle.copy(
             clientId = request.clientId,
             plate = request.plate,
             brand = request.brand,
             model = request.model,
             year = request.year,
             modifiedAt = java.time.LocalDateTime.now(),
-            version = existingVehicle.version + 1
+            version = vehicle.version + 1
         )
-        
+
         return storagePort.update(updatedVehicle)
     }
 
-    fun delete(id: java.util.UUID): Boolean {
-        val existingVehicle = storagePort.findById(id) ?: return false
-        storagePort.delete(existingVehicle.id)
-        return true
+    fun delete(id: UUID) {
+        storagePort.delete(id)
     }
 }

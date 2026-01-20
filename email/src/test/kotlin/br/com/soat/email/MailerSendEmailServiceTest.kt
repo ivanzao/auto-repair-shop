@@ -2,7 +2,7 @@ package br.com.soat.email
 
 import br.com.soat.config.Config
 import br.com.soat.mail.model.OrderQuoteApprovalEmailInput
-import br.com.soat.order.model.OrderService
+import br.com.soat.service.model.Service
 import com.mailersend.sdk.MailerSend
 import com.mailersend.sdk.emails.Email
 import com.mailersend.sdk.emails.Emails
@@ -49,7 +49,7 @@ class MailerSendEmailServiceTest {
             customerName = "João Silva",
             customerEmail = "joao@email.com",
             services = listOf(
-                OrderService(
+                Service(
                     name = "Troca de óleo",
                     description = "Troca de óleo do motor",
                     price = BigDecimal("150.00")
@@ -87,12 +87,12 @@ class MailerSendEmailServiceTest {
             customerName = "Maria Santos",
             customerEmail = "maria@email.com",
             services = listOf(
-                OrderService(
+                Service(
                     name = "Alinhamento",
                     description = "Alinhamento de rodas",
                     price = BigDecimal("80.00")
                 ),
-                OrderService(
+                Service(
                     name = "Balanceamento",
                     description = "Balanceamento de rodas",
                     price = BigDecimal("60.00")

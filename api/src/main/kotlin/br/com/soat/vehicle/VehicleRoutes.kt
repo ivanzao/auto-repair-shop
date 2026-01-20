@@ -25,7 +25,6 @@ fun Application.vehicleRoutes(koin: Koin) {
                 post("/vehicles") {
                     val request = call.receive<CreateVehicleRequestDTO>()
                     val createdVehicle = useCase.create(request.toModel())
-
                     call.respond(
                         status = HttpStatusCode.Created,
                         message = VehicleResponseDTO.from(createdVehicle)
@@ -35,12 +34,7 @@ fun Application.vehicleRoutes(koin: Koin) {
                 get("/vehicles/{id}") {
                     val id = call.getUUIDPathParameter("id")
                     val vehicle = useCase.findById(id)
-
-                    if (vehicle != null) {
-                        call.respond(HttpStatusCode.OK, VehicleResponseDTO.from(vehicle))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, VehicleResponseDTO.from(vehicle))
                 }
 
                 get("/vehicles") {
@@ -52,23 +46,13 @@ fun Application.vehicleRoutes(koin: Koin) {
                     val id = call.getUUIDPathParameter("id")
                     val request = call.receive<CreateVehicleRequestDTO>()
                     val updatedVehicle = useCase.update(id, request.toModel())
-
-                    if (updatedVehicle != null) {
-                        call.respond(HttpStatusCode.OK, VehicleResponseDTO.from(updatedVehicle))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    call.respond(HttpStatusCode.OK, VehicleResponseDTO.from(updatedVehicle))
                 }
 
                 delete("/vehicles/{id}") {
                     val id = call.getUUIDPathParameter("id")
-                    val deleted = useCase.delete(id)
-
-                    if (deleted) {
-                        call.respond(HttpStatusCode.NoContent)
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
-                    }
+                    useCase.delete(id)
+                    call.respond(HttpStatusCode.NoContent)
                 }
             }
         }

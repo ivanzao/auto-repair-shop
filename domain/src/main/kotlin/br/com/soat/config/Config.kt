@@ -4,10 +4,9 @@ class Config(
     private val flat: MutableMap<String, Any?>
 ) {
 
-    fun getString(key: String, defaultValue: String? = null): String =
-        get(key, defaultValue) { it.toString() }
+    fun getString(key: String, defaultValue: String? = null) = get(key, defaultValue) { it.toString() }
 
-    fun getInt(key: String, defaultValue: Int? = null): Int =
+    fun getInt(key: String, defaultValue: Int? = null) =
         get(key, defaultValue) {
             when (it) {
                 is Int -> it
@@ -19,7 +18,7 @@ class Config(
             }
         }
 
-    fun getBoolean(key: String, defaultValue: Boolean? = null): Boolean =
+    fun getBoolean(key: String, defaultValue: Boolean? = null) =
         get(key, defaultValue) {
             when (it) {
                 is Boolean -> it

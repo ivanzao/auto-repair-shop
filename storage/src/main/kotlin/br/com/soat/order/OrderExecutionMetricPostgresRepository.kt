@@ -13,25 +13,6 @@ import org.jetbrains.exposed.sql.update
 
 class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
 
-    override fun create(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
-        OrderExecutionMetrics.insert {
-            it[id] = metric.id
-            it[orderId] = metric.orderId
-            it[inProgressAt] = metric.inProgressAt.toKotlinLocalDateTime()
-            it[completedAt] = metric.completedAt?.toKotlinLocalDateTime()
-        }.resultedValues?.singleOrNull()
-            ?.toOrderExecutionMetric()
-            ?: throw IllegalStateException("Failed to save OrderExecutionMetric")
-    }
-
-    override fun update(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
-        OrderExecutionMetrics.update({ OrderExecutionMetrics.id eq metric.id }) {
-            it[completedAt] = metric.completedAt?.toKotlinLocalDateTime()
-        }
-
-        findByOrderId(metric.orderId) ?: throw IllegalStateException("Failed to update OrderExecutionMetric")
-    }
-
     override fun findByOrderId(orderId: UUID): OrderExecutionMetric? = transaction {
         OrderExecutionMetrics
             .selectAll()
@@ -64,5 +45,24 @@ class OrderExecutionMetricPostgresRepository : OrderExecutionMetricRepository {
             totalCompleted = totalCompleted,
             averageExecutionTime = avgSeconds?.let { Duration.ofSeconds(it.toLong()) }
         )
+    }
+
+    override fun create(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
+        OrderExecutionMetrics.insert {
+            it[id] = metric.id
+            it[orderId] = metric.orderId
+            it[inProgressAt] = metric.inProgressAt.toKotlinLocalDateTime()
+            it[completedAt] = metric.completedAt?.toKotlinLocalDateTime()
+        }.resultedValues?.singleOrNull()
+            ?.toOrderExecutionMetric()
+            ?: throw IllegalStateException("Failed to save OrderExecutionMetric")
+    }
+
+    override fun update(metric: OrderExecutionMetric): OrderExecutionMetric = transaction {
+        OrderExecutionMetrics.update({ OrderExecutionMetrics.id eq metric.id }) {
+            it[completedAt] = metric.completedAt?.toKotlinLocalDateTime()
+        }
+
+        findByOrderId(metric.orderId) ?: throw IllegalStateException("Failed to update OrderExecutionMetric")
     }
 }

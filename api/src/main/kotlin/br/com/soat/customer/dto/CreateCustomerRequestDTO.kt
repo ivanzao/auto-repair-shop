@@ -11,6 +11,7 @@ data class CreateCustomerRequestDTO(
     val email: String,
     val contact: String,
 ) {
+
     fun toModel() = CreateCustomerRequest(
         name = name,
         document = Document(document),

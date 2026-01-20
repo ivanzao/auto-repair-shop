@@ -65,7 +65,7 @@ class ScheduledTaskRunner(
                 if (!scheduler.awaitTermination(10, TimeUnit.SECONDS)) {
                     scheduler.shutdownNow()
                 }
-            } catch (e: InterruptedException) {
+            } catch (_: InterruptedException) {
                 scheduler.shutdownNow()
             }
         }

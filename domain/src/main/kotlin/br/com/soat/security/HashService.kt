@@ -14,7 +14,6 @@ class HashService(config: Config) {
         return OpenBSDBCrypt.generate(raw.toCharArray(), salt, cost)
     }
 
-    fun check(raw: String, hash: String): Boolean {
-        return OpenBSDBCrypt.checkPassword(hash, raw.toCharArray())
-    }
+    fun check(raw: String, hash: String) =
+        OpenBSDBCrypt.checkPassword(hash, raw.toCharArray())
 }

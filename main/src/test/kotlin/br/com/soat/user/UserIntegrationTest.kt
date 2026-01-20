@@ -10,18 +10,6 @@ import org.junit.jupiter.api.Test
 class UserIntegrationTest : IntegrationTest() {
 
     @Test
-    fun `should create user successfully`() {
-        val token = loginAsAdmin()
-
-        val response = httpClient.createUser(UserFixtures.createUserRequest(), token)
-
-        assertEquals(201, response.statusCode())
-        assertEquals("Test User", response.body().name)
-        assertEquals("test@email.com", response.body().email)
-        assertEquals("ADMIN", response.body().role)
-    }
-
-    @Test
     fun `should get user by id`() {
         val token = loginAsAdmin()
         val createdUser = httpClient.createUser(UserFixtures.createUserRequest(), token)
@@ -55,6 +43,27 @@ class UserIntegrationTest : IntegrationTest() {
 
         assertEquals(200, response.statusCode())
         assertTrue(response.body().contains("Test User"))
+    }
+
+    @Test
+    fun `should return 400 for invalid uuid format`() {
+        val token = loginAsAdmin()
+
+        val response = httpClient.getUser("invalid-uuid", token)
+
+        assertEquals(400, response.statusCode())
+    }
+
+    @Test
+    fun `should create user successfully`() {
+        val token = loginAsAdmin()
+
+        val response = httpClient.createUser(UserFixtures.createUserRequest(), token)
+
+        assertEquals(201, response.statusCode())
+        assertEquals("Test User", response.body().name)
+        assertEquals("test@email.com", response.body().email)
+        assertEquals("ADMIN", response.body().role)
     }
 
     @Test
@@ -115,14 +124,5 @@ class UserIntegrationTest : IntegrationTest() {
         val response = httpClient.deleteUser("00000000-0000-0000-0000-000000000000", token)
 
         assertEquals(404, response.statusCode())
-    }
-
-    @Test
-    fun `should return 400 for invalid uuid format`() {
-        val token = loginAsAdmin()
-
-        val response = httpClient.getUser("invalid-uuid", token)
-
-        assertEquals(400, response.statusCode())
     }
 }

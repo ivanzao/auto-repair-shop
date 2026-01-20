@@ -21,6 +21,10 @@ class CustomerPostgresRepository : CustomerRepository {
             ?.toCustomer()
     }
 
+    override fun findAll(): List<Customer> = transaction {
+        Customers.selectAll().map { it.toCustomer() }
+    }
+
     override fun create(customer: Customer) = transaction {
         Customers.insert {
             it[id] = customer.id
@@ -35,10 +39,6 @@ class CustomerPostgresRepository : CustomerRepository {
             ?: throw IllegalStateException("An error occurred while saving Customer")
     }
 
-    override fun findAll(): List<Customer> = transaction {
-        Customers.selectAll().map { it.toCustomer() }
-    }
-
     override fun update(customer: Customer): Customer = transaction {
         Customers.update({ (Customers.id eq customer.id) and (Customers.version eq customer.version) }) {
             it[modifiedAt] = customer.modifiedAt.toKotlinLocalDateTime()
@@ -50,10 +50,12 @@ class CustomerPostgresRepository : CustomerRepository {
             it[contact] = customer.contact
         }
 
-        findById(customer.id) ?: throw IllegalStateException("Customer not found after update")
+        findById(customer.id) ?: throw IllegalStateException("An error occurred while updating Customer")
     }
 
-    override fun delete(id: UUID) = transaction {
-        Customers.deleteWhere { Customers.id eq id }
-    } == 1
+    override fun delete(id: UUID) {
+        transaction {
+            Customers.deleteWhere { Customers.id eq id }
+        }
+    }
 }

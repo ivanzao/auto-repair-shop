@@ -15,6 +15,15 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class RefreshTokenPostgresRepository : RefreshTokenRepository {
 
+    override fun findByToken(token: UUID): RefreshToken? = transaction {
+        RefreshTokens.innerJoin(Users)
+            .selectAll()
+            .where { RefreshTokens.token eq token }
+            .limit(1)
+            .firstOrNull()
+            ?.toRefreshToken()
+    }
+
     override fun save(refreshToken: RefreshToken): RefreshToken = transaction {
         RefreshTokens.insert {
             it[token] = refreshToken.token
@@ -40,21 +49,9 @@ class RefreshTokenPostgresRepository : RefreshTokenRepository {
             ?: throw IllegalStateException("An error occurred while saving RefreshToken")
     }
 
-    override fun delete(token: UUID): RefreshToken = transaction {
-        val refreshToken = findByToken(token)
-            ?: throw IllegalStateException("RefreshToken not found")
-
-        RefreshTokens.deleteWhere { RefreshTokens.token eq token }
-
-        refreshToken
-    }
-
-    override fun findByToken(refreshToken: UUID): RefreshToken? = transaction {
-        RefreshTokens.innerJoin(Users)
-            .selectAll()
-            .where { RefreshTokens.token eq refreshToken }
-            .limit(1)
-            .firstOrNull()
-            ?.toRefreshToken()
+    override fun delete(token: UUID) {
+        transaction {
+            RefreshTokens.deleteWhere { RefreshTokens.token eq token }
+        }
     }
 }

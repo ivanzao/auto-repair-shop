@@ -9,14 +9,14 @@ class CommandBus {
     private val channel = Channel<Command>(Channel.UNLIMITED)
 
     suspend fun publish(command: Command) {
-        logger.debug("Enqueuing command ${command::class.simpleName} with id ${command.id}")
+        logger.info("Enqueuing command ${command::class.simpleName} with id ${command.id}")
         channel.send(command)
     }
 
     suspend fun consume(handler: suspend (Command) -> Unit) {
         for (command in channel) {
             try {
-                logger.debug("Consuming command ${command::class.simpleName} with id ${command.id}")
+                logger.info("Consuming command ${command::class.simpleName} with id ${command.id}")
                 handler(command)
             } catch (e: Exception) {
                 logger.error("Error consuming command ${command.id}", e)
