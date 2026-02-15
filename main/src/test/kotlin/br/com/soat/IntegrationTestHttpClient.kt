@@ -46,6 +46,10 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
 
     // ==================== ORDER ====================
 
+    fun listOrders(bearerToken: String, page: Int = 1): HttpResponse<String> {
+        return get("/v1/orders?page=$page", bearerToken)
+    }
+
     fun getOrder(orderId: String, bearerToken: String): HttpResponse<OrderResponseDTO> {
         val response = get("/v1/orders/$orderId", bearerToken)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))

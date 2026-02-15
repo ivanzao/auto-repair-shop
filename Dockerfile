@@ -1,18 +1,8 @@
-# Stage 1: Build fat jar
-FROM gradle:8.14-jdk21 AS builder
-
-WORKDIR /app
-
-COPY . .
-
-RUN ./gradlew :main:shadowJar --no-daemon
-
-# Stage 2: Run
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY --from=builder /app/main/build/libs/application.jar /app/application.jar
+COPY main/build/libs/application.jar application.jar
 
 EXPOSE 8080
 

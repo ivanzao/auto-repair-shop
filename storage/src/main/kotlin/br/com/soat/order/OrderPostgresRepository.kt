@@ -11,6 +11,7 @@ import br.com.soat.user.Users
 import br.com.soat.vehicle.Vehicles
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
+import org.jetbrains.exposed.sql.Case
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -18,7 +19,9 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.intLiteral
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.stringLiteral
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
@@ -30,12 +33,26 @@ class OrderPostgresRepository(
         val limit = PAGE_SIZE
         val offset = (page - 1).toLong() * limit
 
+        val excludedStatuses = listOf(
+            Order.Status.COMPLETED.name,
+            Order.Status.DELIVERED.name,
+            Order.Status.CANCELED.name
+        )
+
+        val statusPriority = Case()
+            .When(Orders.status eq stringLiteral(Order.Status.IN_PROGRESS.name), intLiteral(1))
+            .When(Orders.status eq stringLiteral(Order.Status.WAITING_APPROVAL.name), intLiteral(2))
+            .When(Orders.status eq stringLiteral(Order.Status.IN_DIAGNOSIS.name), intLiteral(3))
+            .When(Orders.status eq stringLiteral(Order.Status.RECEIVED.name), intLiteral(4))
+            .Else(intLiteral(5))
+
         val orderRows = Orders
             .join(Customers, JoinType.INNER, Orders.customerId, Customers.id)
             .join(Vehicles, JoinType.INNER, Orders.vehicleId, Vehicles.id)
             .join(Users, JoinType.INNER, Orders.attendantId, Users.id)
             .selectAll()
-            .orderBy(Orders.createdAt, SortOrder.DESC)
+            .where { Orders.status notInList excludedStatuses }
+            .orderBy(statusPriority to SortOrder.ASC, Orders.createdAt to SortOrder.ASC)
             .limit(limit)
             .offset(offset)
             .toList()

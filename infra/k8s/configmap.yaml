@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auto-repair-shop-config
+  namespace: auto-repair-shop
+data:
+  DATABASE_URL: "jdbc:postgresql://<RDS_ENDPOINT>:5432/auto_repair_shop"
+  DATABASE_USERNAME: "app"
+  DATABASE_DRIVERCLASSNAME: "org.postgresql.Driver"
+  DATABASE_MAXIMUMPOOLSIZE: "6"
+  SERVER_PORT: "8080"
+  APPLICATION_URL: "http://auto-repair-shop-service:8080"
+  APPLICATION_PROFILE: "prod"
+  SECURITY_HASH_COST: "10"
+  SECURITY_AUTHENTICATION_EXPIRESIN: "60"

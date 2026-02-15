@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auto-repair-shop
+  namespace: auto-repair-shop
+  labels:
+    app: auto-repair-shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auto-repair-shop
+  template:
+    metadata:
+      labels:
+        app: auto-repair-shop
+    spec:
+      containers:
+        - name: auto-repair-shop
+          image: ghcr.io/ivanzao/auto-repair-shop:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: auto-repair-shop-config
+            - secretRef:
+                name: auto-repair-shop-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
