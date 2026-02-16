@@ -25,6 +25,19 @@ resource "aws_subnet" "public" {
   }
 }
 
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 1)
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name                                        = "${var.cluster_name}-public-b"
+    "kubernetes.io/role/elb"                     = "1"
+    "kubernetes.io/cluster/${var.cluster_name}"  = "shared"
+  }
+}
+
 resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, 10)
@@ -32,6 +45,18 @@ resource "aws_subnet" "private" {
 
   tags = {
     Name                                        = "${var.cluster_name}-private"
+    "kubernetes.io/role/internal-elb"            = "1"
+    "kubernetes.io/cluster/${var.cluster_name}"  = "shared"
+  }
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, 11)
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  tags = {
+    Name                                        = "${var.cluster_name}-private-b"
     "kubernetes.io/role/internal-elb"            = "1"
     "kubernetes.io/cluster/${var.cluster_name}"  = "shared"
   }
@@ -95,7 +120,17 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
 resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.private_b.id
   route_table_id = aws_route_table.private.id
 }

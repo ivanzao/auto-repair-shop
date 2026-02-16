@@ -1,6 +1,6 @@
 resource "aws_db_subnet_group" "main" {
   name       = "${var.cluster_name}-db-subnet"
-  subnet_ids = [aws_subnet.private.id]
+  subnet_ids = [aws_subnet.private.id, aws_subnet.private_b.id]
 
   tags = {
     Name = "${var.cluster_name}-db-subnet-group"
@@ -15,7 +15,7 @@ resource "aws_security_group" "rds" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [module.eks.node_security_group_id]
+    security_groups = [aws_eks_cluster.main.vpc_config[0].cluster_security_group_id]
   }
 
   egress {
@@ -34,7 +34,7 @@ resource "aws_db_instance" "postgres" {
   identifier = "${var.cluster_name}-postgres"
 
   engine         = "postgres"
-  engine_version = "16.4"
+  engine_version = "16"
   instance_class = "db.t3.micro"
 
   allocated_storage     = 20
