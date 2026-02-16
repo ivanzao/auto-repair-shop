@@ -15,6 +15,8 @@ spec:
       labels:
         app: auto-repair-shop
     spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
       containers:
         - name: auto-repair-shop
           image: ghcr.io/ivanzao/auto-repair-shop:latest
