@@ -116,9 +116,9 @@ jobs:
         run: |
           kubectl create secret generic auto-repair-shop-secret \
             --namespace=auto-repair-shop \
-            --from-literal=DATABASE_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --from-literal=SECURITY_JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --from-literal=MAILERSEND_TOKEN=${{ secrets.MAILERSEND_TOKEN }} \
+            --from-literal="DATABASE_PASSWORD=${{ secrets.DB_PASSWORD }}" \
+            --from-literal="SECURITY_JWT_SECRET=${{ secrets.JWT_SECRET }}" \
+            --from-literal="MAILERSEND_TOKEN=${{ secrets.MAILERSEND_TOKEN }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy to Kubernetes
