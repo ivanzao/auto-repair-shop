@@ -42,6 +42,12 @@ bin/
 ### VS Code ###
 .vscode/
 
+### Terraform ###
+*.tfvars
+.terraform/
+*.tfstate
+*.tfstate.backup
+
 ### Mac OS ###
 .DS_Store
 

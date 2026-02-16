@@ -1,95 +1,120 @@
 # Auto Repair Shop
 
-Sistema de gerenciamento para oficina mecânica desenvolvido em Kotlin com arquitetura inspirada em hexagonal/ports & adapters multi-módulo.
+Sistema de gerenciamento para oficina mecanica desenvolvido em Kotlin com arquitetura hexagonal (ports & adapters) multi-modulo.
+
+## Fase 2 - Objetivos
+
+- Listagem de ordens de servico com filtro (exclui finalizadas/canceladas) e ordenacao por prioridade de status
+- Manifestos Kubernetes para deploy em cluster
+- Infraestrutura como codigo com Terraform (AWS EKS)
+- Pipeline CI/CD com GitHub Actions (build, teste, Docker, deploy)
+
+---
+
+## Arquitetura
+
+```mermaid
+graph TB
+    subgraph "CI/CD (GitHub Actions)"
+        GH[Push to main] --> BUILD[Build & Test]
+        BUILD --> DOCKER[Build Docker Image]
+        DOCKER --> GHCR[Push to GHCR]
+        GHCR --> DEPLOY[Deploy to K8s]
+    end
+
+    subgraph "AWS Cloud"
+        subgraph "VPC"
+            subgraph "EKS Cluster"
+                subgraph "Namespace: auto-repair-shop"
+                    LB[LoadBalancer :8080]
+                    APP1[App Pod 1]
+                    APP2[App Pod 2]
+                    HPA[HPA 2-5 replicas]
+                end
+            end
+            subgraph "RDS"
+                PG[(PostgreSQL 16)]
+            end
+        end
+    end
+
+    CLIENT[Cliente] --> LB
+    LB --> APP1
+    LB --> APP2
+    APP1 --> PG
+    APP2 --> PG
+    HPA -.-> APP1
+    HPA -.-> APP2
+    DEPLOY --> LB
+```
 
 ### Estrutura de Pastas
+
 ```
 auto-repair-shop/
-├── main/                  # Aplicação principal
-├── domain/                # Lógica de negócio
-├── api/                   # REST API
-├── storage/               # Persistência
-├── worker/                # Background jobs
-├── jwt/                   # Autenticação
-├── email/                 # Envio de emails
-├── Dockerfile             # Multi-stage build (Gradle + JRE)
-├── docker-compose.yaml    # Orquestração (app + PostgreSQL)
+├── main/                  # Aplicacao principal (entry point, DI)
+├── domain/                # Logica de negocio (modelos, use cases, ports)
+├── api/                   # REST API (Ktor routes, DTOs)
+├── storage/               # Persistencia (Exposed, Flyway migrations)
+├── worker/                # Background jobs (EventBus, CommandBus)
+├── jwt/                   # Autenticacao JWT
+├── email/                 # Integracao MailerSend
+├── infra/
+│   ├── k8s/               # Manifestos Kubernetes
+│   └── terraform/         # Terraform (AWS EKS, RDS, VPC)
+├── .github/workflows/     # CI/CD Pipeline
+├── Dockerfile             # Imagem de runtime (JRE + JAR)
+├── docker-compose.yaml    # Orquestracao local (app + PostgreSQL)
 └── build.gradle.kts       # Build principal
 ```
+
 ---
-### Stack
+
+## Stack
 
 - **Linguagem**: Kotlin 2.2.10
 - **JVM**: Java 21
-- **Build**: Gradle (Kotlin DSL)
-- **Web Framework**: Ktor 3.3.2
+- **Build**: Gradle 8.14 (Kotlin DSL)
+- **Web Framework**: Ktor 3.3.3
 - **Dependency Injection**: Koin 4.1.1
-- **Database**: PostgreSQL 42.7.8
+- **Database**: PostgreSQL 18.1
 - **ORM**: Exposed 0.61.0
-- **Migrations**: Flyway 11.17.0
+- **Migrations**: Flyway
 - **Testing**: JUnit 5, MockK, TestContainers
 - **Quality**: JaCoCo, SonarQube
----
-### Testes
-
-O projeto possui dois tipos de testes:
-
-```bash
-# Testes unitários
-./gradlew test
-
-# Testes de integração
-./gradlew integrationTest
-```
-
-**Nota**: Os testes de integração requerem Docker para executar containers do PostgreSQL via TestContainers.
+- **Infra**: Docker, Kubernetes, Terraform, GitHub Actions
 
 ---
 
-### Cobertura de Código
+## Execucao Local
 
-#### Gerar Relatório de Cobertura
+### Opcao 1: Docker Compose (Recomendado)
 
-O projeto usa JaCoCo para medir a cobertura de código, incluindo testes unitários e de integração.
+**Pre-requisitos:** Docker, Docker Compose e Java 21
 
 ```bash
-./gradlew jacocoAggregatedReport
-```
+# Build do JAR
+./gradlew :main:shadowJar
 
-Para visualizar, abra `build/reports/jacoco/jacocoAggregatedReport/html/index.html` no navegador
-
----
-
-### Executar o Projeto
-
-#### Opção 1: Com Docker (Recomendado)
-
-#### Pré-requisitos
-- Docker
-- Docker Compose
-
-#### Iniciar os serviços
-```bash
-# Build e start
+# Build e start dos containers
 docker-compose up --build -d
+
+# Verificar logs
+docker-compose logs -f app
+
+# Parar
+docker-compose down
 ```
 
-#### Acessar banco de dados
-```
-Host: localhost
-Port: 5432
-Database: postgres
-Username: postgres
-Password: test
-```
+Acesse:
+- API: http://localhost:8080/v1
+- Swagger UI: http://localhost:8080/swagger
+- Health Check: http://localhost:8080/health
 
-#### Opção 2: Execução Local (sem Docker)
+### Opcao 2: Execucao Local (sem Docker)
 
-#### Pré-requisitos
-- Java 21
-- PostgreSQL rodando localmente
+**Pre-requisitos:** Java 21, PostgreSQL rodando localmente
 
-#### Build e executar
 ```bash
 # Build
 ./gradlew build
@@ -97,13 +122,115 @@ Password: test
 # Executar
 ./gradlew :main:run
 ```
+
+### Banco de dados local (Docker Compose)
+
+```
+Host: localhost
+Port: 5432
+Database: auto-repair-shop
+Username: app
+Password: test
+```
+
 ---
-### Arquitetura Docker
 
-**Dockerfile**:
-- **Stage 1 (Build)**: `gradle:8.14-jdk21` - Build do fat JAR
-- **Stage 2 (Run)**: `eclipse-temurin:21-jre` - Execução leve
+## Testes
 
-**docker-compose.yaml**:
-- **db**: PostgreSQL 18.1 com volume persistente
-- **app**: Aplicação Kotlin/Ktor
+```bash
+# Testes unitarios
+./gradlew test
+
+# Testes de integracao (requer Docker para TestContainers)
+./gradlew integrationTest
+
+# Cobertura de codigo (JaCoCo)
+./gradlew jacocoAggregatedReport
+# Relatorio em: build/reports/jacoco/jacocoAggregatedReport/html/index.html
+```
+
+---
+
+## Deploy em Kubernetes
+
+### Usando manifestos diretamente
+
+```bash
+# Aplicar todos os manifestos
+kubectl apply -f infra/k8s/
+
+# Verificar pods
+kubectl get pods -n auto-repair-shop
+
+# Verificar servicos
+kubectl get svc -n auto-repair-shop
+
+# Ver logs da aplicacao
+kubectl logs -f deployment/auto-repair-shop -n auto-repair-shop
+```
+
+**Importante:** Os secrets (DB, JWT, MailerSend) sao criados automaticamente pelo CI/CD a partir dos GitHub Secrets. Nao ha arquivo de secrets versionado no repositorio.
+
+### Arquivos K8s
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `namespace.yaml` | Namespace `auto-repair-shop` |
+| `configmap.yaml` | Configuracoes nao-sensiveis |
+| `deployment.yaml` | App (2 replicas, health probes) |
+| `service.yaml` | LoadBalancer na porta 8080 |
+| `hpa.yaml` | HPA 2-5 replicas (CPU 70%, memoria 80%) |
+
+---
+
+## Provisionamento com Terraform (AWS)
+
+O Terraform gerencia apenas a infraestrutura (VPC, EKS, RDS). Os recursos da aplicacao sao gerenciados via `kubectl`.
+
+```bash
+cd infra/terraform/
+
+# Inicializar
+terraform init
+
+# Planejar
+terraform plan -var="db_password=YOUR_PASSWORD"
+
+# Aplicar
+terraform apply -var="db_password=YOUR_PASSWORD"
+
+# Obter outputs
+terraform output rds_endpoint
+terraform output cluster_name
+
+# Configurar kubectl
+aws eks update-kubeconfig --name auto-repair-shop-cluster --region us-east-1
+```
+
+---
+
+## CI/CD Pipeline
+
+O pipeline GitHub Actions (`.github/workflows/ci-cd.yaml`) executa automaticamente:
+
+1. **Build & Test** (em todo push/PR): build, testes unitarios, testes de integracao
+2. **Docker** (apenas main): build da imagem e push para GitHub Container Registry
+3. **Deploy** (apenas main): aplica manifestos K8s e atualiza a imagem no cluster
+
+### Secrets necessarios no GitHub
+
+| Secret | Descricao |
+|--------|-----------|
+| `AWS_ACCESS_KEY_ID` | Chave de acesso AWS |
+| `AWS_SECRET_ACCESS_KEY` | Chave secreta AWS |
+| `AWS_REGION` | Regiao AWS (ex: us-east-1) |
+| `RDS_ENDPOINT` | Endpoint do RDS (obtido via `terraform output rds_endpoint`) |
+
+---
+
+## API
+
+- **Base path**: `/v1`
+- **Swagger UI**: [`/swagger`](http://localhost:8080/swagger)
+- **Health check**: `/health`
+- **Autenticacao**: JWT Bearer tokens (roles: ADMIN e ATTENDANT)

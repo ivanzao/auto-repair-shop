@@ -19,5 +19,5 @@ variable "db_password" {
 variable "node_instance_type" {
   description = "EC2 instance type for EKS node group"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.small"
 }

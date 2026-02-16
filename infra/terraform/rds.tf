@@ -38,8 +38,8 @@ resource "aws_db_instance" "postgres" {
   instance_class = "db.t3.micro"
 
   allocated_storage     = 20
-  max_allocated_storage = 50
-  storage_type          = "gp3"
+  max_allocated_storage = 100
+  storage_type          = "gp2"
 
   db_name  = "auto_repair_shop"
   username = "app"
