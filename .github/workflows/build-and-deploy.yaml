@@ -199,7 +199,7 @@ jobs:
           kubectl patch configmap auto-repair-shop-config \
             -n auto-repair-shop \
             --type merge \
-            -p "{\"data\":{\"DATABASE_URL\":\"jdbc:postgresql://${{ needs.terraform.outputs.rds_endpoint }}:5432/auto_repair_shop\",\"APPLICATION_URL\":\"http://${{ steps.lb.outputs.hostname }}:8080\"}}"
+            -p "{\"data\":{\"DATABASE_URL\":\"jdbc:postgresql://${{ needs.terraform.outputs.rds_endpoint }}/auto_repair_shop\",\"APPLICATION_URL\":\"http://${{ steps.lb.outputs.hostname }}:8080\"}}"
 
       - name: Update deployment image
         run: |

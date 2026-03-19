@@ -9,6 +9,6 @@ output "cluster_name" {
 }
 
 output "rds_endpoint" {
-  description = "RDS PostgreSQL endpoint"
+  description = "RDS PostgreSQL endpoint (host:port)"
   value       = module.rds.endpoint
 }
