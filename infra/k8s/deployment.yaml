@@ -17,6 +17,7 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        runAsUser: 100
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
