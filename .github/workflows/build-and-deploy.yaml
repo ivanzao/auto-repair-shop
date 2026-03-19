@@ -108,7 +108,7 @@ jobs:
 
       - name: Ensure S3 bucket for TF state
         run: |
-          aws s3api create-bucket --bucket auto-repair-shop-tfstate --region us-east-1 2>/dev/null || true
+          aws s3api create-bucket --bucket auto-repair-shop-51e91ca1-9a1e-4494-b657-6d868a9118de-tfstate --region us-east-1 2>/dev/null || true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
