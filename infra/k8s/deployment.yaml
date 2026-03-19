@@ -15,11 +15,28 @@ spec:
       labels:
         app: auto-repair-shop
     spec:
+      securityContext:
+        runAsNonRoot: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: auto-repair-shop
+                topologyKey: kubernetes.io/hostname
       imagePullSecrets:
         - name: ghcr-credentials
       containers:
         - name: auto-repair-shop
           image: ghcr.io/ivanzao/auto-repair-shop:latest
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8080
           envFrom:

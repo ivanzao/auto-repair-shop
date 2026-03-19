@@ -5,6 +5,8 @@ metadata:
   namespace: auto-repair-shop
   labels:
     app: auto-repair-shop
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
 spec:
   type: LoadBalancer
   ports:

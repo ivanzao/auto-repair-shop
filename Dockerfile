@@ -1,12 +1,13 @@
 FROM eclipse-temurin:21-jre
 
+RUN addgroup --system app && adduser --system --ingroup app app
+
 WORKDIR /app
 
 COPY main/build/libs/application.jar application.jar
 
-EXPOSE 8080
+USER app
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
+EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "application.jar"]
