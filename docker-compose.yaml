@@ -17,7 +17,9 @@ services:
       retries: 5
 
   app:
-    build: .
+    build:
+      context: .
+      target: dev
     container_name: auto-repair-shop-app
     ports:
       - "8080:8080"
