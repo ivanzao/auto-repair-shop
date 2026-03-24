@@ -51,5 +51,8 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+### Load Test Results ###
+infra/load-test/results-*/
+
 ### IntelliJ IDEA ###
 .idea/

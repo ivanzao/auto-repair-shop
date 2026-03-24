@@ -2,53 +2,9 @@
 
 Sistema de gerenciamento para oficina mecanica desenvolvido em Kotlin com arquitetura hexagonal (ports & adapters) multi-modulo.
 
-## Fase 2 - Objetivos
-
-- Listagem de ordens de servico com filtro (exclui finalizadas/canceladas) e ordenacao por prioridade de status
-- Manifestos Kubernetes para deploy em cluster
-- Infraestrutura como codigo com Terraform (AWS EKS)
-- Pipeline CI/CD com GitHub Actions (build, teste, Docker, deploy)
-
 ---
 
-## Arquitetura
-
-```mermaid
-graph TB
-    subgraph "CI/CD (GitHub Actions)"
-        GH[Push to main] --> BUILD[Build & Test]
-        BUILD --> DOCKER[Build Docker Image]
-        DOCKER --> GHCR[Push to GHCR]
-        GHCR --> DEPLOY[Deploy to K8s]
-    end
-
-    subgraph "AWS Cloud"
-        subgraph "VPC"
-            subgraph "EKS Cluster"
-                subgraph "Namespace: auto-repair-shop"
-                    LB[LoadBalancer :8080]
-                    APP1[App Pod 1]
-                    APP2[App Pod 2]
-                    HPA[HPA 2-5 replicas]
-                end
-            end
-            subgraph "RDS"
-                PG[(PostgreSQL 16)]
-            end
-        end
-    end
-
-    CLIENT[Cliente] --> LB
-    LB --> APP1
-    LB --> APP2
-    APP1 --> PG
-    APP2 --> PG
-    HPA -.-> APP1
-    HPA -.-> APP2
-    DEPLOY --> LB
-```
-
-### Estrutura de Pastas
+## Estrutura de Pastas
 
 ```
 auto-repair-shop/
