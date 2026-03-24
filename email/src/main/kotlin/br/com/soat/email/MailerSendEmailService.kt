@@ -15,7 +15,7 @@ class MailerSendEmailService(private val config: Config) : EmailService {
     override fun sendOrderQuoteApprovalEmail(input: OrderQuoteApprovalEmailInput) {
         val template = readFileFromResource("email-template.html")
         val email = Email().apply {
-            setFrom("Auto Repair Shop", "noreply@test-r9084zv1q0mgw63d.mlsender.net")
+            setFrom("Auto Repair Shop", "noreply@test-xkjn41md9304z781.mlsender.net")
             addRecipient(input.customerName, input.customerEmail)
             setSubject("Orçamento de Ordem de Serviço")
             setHtml(template.setVariables(input, config.getString("application.url")))

@@ -1,11 +1,9 @@
-# Rede privada isolada na AWS com subnets publicas e privadas em 2 AZs
 module "vpc" {
   source = "./modules/vpc"
 
   cluster_name = var.cluster_name
 }
 
-# Cluster Kubernetes gerenciado onde a aplicacao roda
 module "eks" {
   source = "./modules/eks"
 
@@ -16,7 +14,6 @@ module "eks" {
   public_access_cidrs = var.public_access_cidrs
 }
 
-# Banco de dados PostgreSQL gerenciado, acessivel apenas pelo cluster EKS
 module "rds" {
   source = "./modules/rds"
 

@@ -1,11 +1,9 @@
-# Busca o account ID da conta AWS para montar o ARN da LabRole
 data "aws_caller_identity" "current" {}
 
 locals {
   lab_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/LabRole"
 }
 
-# Cluster Kubernetes gerenciado — control plane provisionado pela AWS
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = local.lab_role_arn
@@ -24,7 +22,6 @@ resource "aws_eks_cluster" "main" {
   }
 }
 
-# Grupo de nodes EC2 que executam os pods da aplicacao
 resource "aws_eks_node_group" "default" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.cluster_name}-default"

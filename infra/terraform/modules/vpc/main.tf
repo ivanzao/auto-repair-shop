@@ -1,9 +1,7 @@
-# Busca as AZs disponiveis na regiao para distribuir as subnets
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Rede virtual isolada com bloco 10.0.0.0/16 (65k IPs)
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -14,7 +12,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Subnet publica AZ-A — expoe o Load Balancer para a internet
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 0)
@@ -28,7 +25,6 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Subnet publica AZ-B — redundancia para alta disponibilidade
 resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 1)
@@ -42,7 +38,6 @@ resource "aws_subnet" "public_b" {
   }
 }
 
-# Subnet privada AZ-A — onde rodam os nodes EKS e o RDS
 resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, 10)
@@ -55,7 +50,6 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Subnet privada AZ-B — redundancia para alta disponibilidade
 resource "aws_subnet" "private_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, 11)
@@ -68,7 +62,6 @@ resource "aws_subnet" "private_b" {
   }
 }
 
-# Gateway que conecta as subnets publicas a internet
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -77,7 +70,6 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# IP fixo para o NAT Gateway
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -86,7 +78,6 @@ resource "aws_eip" "nat" {
   }
 }
 
-# Permite que as subnets privadas acessem a internet (ex: pull de imagens Docker)
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public.id
@@ -98,7 +89,6 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# Roteamento das subnets publicas — trafego vai direto para o Internet Gateway
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -112,7 +102,6 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Roteamento das subnets privadas — trafego sai pelo NAT Gateway
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -126,7 +115,6 @@ resource "aws_route_table" "private" {
   }
 }
 
-# Associacoes que vinculam cada subnet a sua route table
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id

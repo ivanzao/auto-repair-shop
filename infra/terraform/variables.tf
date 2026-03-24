@@ -10,7 +10,6 @@ variable "cluster_name" {
   default     = "auto-repair-shop-cluster"
 }
 
-## Sensitive — pass via environment variable: export TF_VAR_db_password="..."
 variable "db_password" {
   description = "Database password for PostgreSQL"
   type        = string

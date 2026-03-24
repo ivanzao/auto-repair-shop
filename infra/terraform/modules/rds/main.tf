@@ -1,4 +1,3 @@
-# Grupo de subnets onde o RDS pode ser provisionado (exige 2 AZs)
 resource "aws_db_subnet_group" "main" {
   name       = "${var.cluster_name}-db-subnet"
   subnet_ids = var.private_subnet_ids
@@ -8,7 +7,6 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
-# Firewall do RDS — permite conexao apenas vinda do cluster EKS na porta 5432
 resource "aws_security_group" "rds" {
   name_prefix = "${var.cluster_name}-rds-"
   vpc_id      = var.vpc_id
@@ -32,7 +30,6 @@ resource "aws_security_group" "rds" {
   }
 }
 
-# Instancia PostgreSQL gerenciada — banco de dados da aplicacao
 resource "aws_db_instance" "postgres" {
   identifier = "${var.cluster_name}-postgres"
 
