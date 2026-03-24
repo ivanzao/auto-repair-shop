@@ -76,7 +76,12 @@ data class Order(
 
     fun addServices(services: List<Service>) = copy(services = this.services + services)
 
-    fun addSupplyRequirements(supplyRequirements: List<SupplyRequirement>) = copy(extraSupplies = supplyRequirements)
+    fun addSupplyRequirements(supplyRequirements: List<SupplyRequirement>) = copy(
+        extraSupplies = (this.extraSupplies + supplyRequirements)
+            .groupingBy { it.supplyId }
+            .fold(0) { acc, req -> acc + req.quantity }
+            .map { (supplyId, totalQuantity) -> SupplyRequirement(supplyId, totalQuantity) }
+    )
 
     fun canScheduleVehicleDelivery() = status == Status.RECEIVED
     fun canScheduleVehicleReturn() = status == Status.COMPLETED

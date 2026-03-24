@@ -51,31 +51,36 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         val attendant = createUser(role = User.Role.ATTENDANT)
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
-        val supply = createSupply(quantityInStock = 10)
-        val service = createService(requiredSupplies = listOf(SupplyRequirement(supply.id, 5)))
+        val supply = createSupply(quantityInStock = 20)
+        val serviceAtCreation = createService(name = "Oil Change", requiredSupplies = listOf(SupplyRequirement(supply.id, 2)))
+        val serviceAtDiagnosis = createService(name = "Brake Repair", requiredSupplies = listOf(SupplyRequirement(supply.id, 3)))
 
         val bearerToken = tokenProvider.generate(attendant, LocalDateTime.now().plusDays(1))
 
         val emailInputSlot = slot<OrderQuoteApprovalEmailInput>()
         every { emailService.sendOrderQuoteApprovalEmail(capture(emailInputSlot)) } answers {}
 
-        // test
+        // create order with 1 service and 1 extra supply
         val requestDto = CreateOrderRequestDTO(
             customerId = customer.id,
             vehicleId = vehicle.id,
             description = "Noise in the engine",
-            attendantId = attendant.id
+            attendantId = attendant.id,
+            servicesIds = listOf(serviceAtCreation.id),
+            extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 1))
         )
         val createOrderResponse = http.createOrder(requestDto, bearerToken)
         assertEquals(201, createOrderResponse.statusCode())
 
-        // create and validate order
+        // validate order was created with service and extra supply
         val createdOrder = orderRepository.findById(createOrderResponse.body().id)!!
         assertEquals(customer.id, createdOrder.customer.id)
         assertEquals(vehicle.id, createdOrder.vehicle.id)
         assertEquals(attendant.id, createdOrder.attendant.id)
         assertEquals(requestDto.description, createdOrder.description)
         assertEquals(Order.Status.RECEIVED, createdOrder.status)
+        assertEquals(listOf(serviceAtCreation.id), createdOrder.services.map { it.id })
+        assertEquals(listOf(SupplyRequirement(supply.id, 1)), createdOrder.extraSupplies)
 
         // validate public status endpoint (no authentication)
         val statusAfterCreation = http.getOrderStatus(createdOrder.id.toString())
@@ -112,10 +117,10 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         assertEquals(200, statusAfterDiagnosis.statusCode())
         assertEquals(Order.Status.IN_DIAGNOSIS, statusAfterDiagnosis.body().status)
 
-        // finish diagnosis and reserve supplies
+        // finish diagnosis adding 1 more service and 1 more extra supply
         val finishDiagnosisRequest = FinishOrderDiagnosisRequestDTO(
-            servicesIds = listOf(service.id),
-            extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 1))
+            servicesIds = listOf(serviceAtDiagnosis.id),
+            extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 2))
         )
         val orderDiagnosedResponse = http.finishDiagnosis(orderInDiagnosis.id.toString(), finishDiagnosisRequest, bearerToken)
         assertEquals(200, orderDiagnosedResponse.statusCode())
@@ -127,8 +132,18 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
             orderWaitingApproval?.status == Order.Status.WAITING_APPROVAL
         }
         assertEquals(Order.Status.WAITING_APPROVAL, orderWaitingApproval!!.status)
-        assertEquals(finishDiagnosisRequest.servicesIds, orderWaitingApproval!!.services.map { it.id })
-        assertEquals(finishDiagnosisRequest.extraSuppliesRequests.map { it.toModel() }, orderWaitingApproval!!.extraSupplies)
+
+        // validate both services are present (from creation + diagnosis)
+        assertEquals(
+            listOf(serviceAtCreation.id, serviceAtDiagnosis.id),
+            orderWaitingApproval!!.services.map { it.id }
+        )
+
+        // validate extra supplies are consolidated (1 from creation + 2 from diagnosis = 3 total)
+        assertEquals(
+            listOf(SupplyRequirement(supply.id, 3)),
+            orderWaitingApproval!!.extraSupplies
+        )
 
         // validate public status endpoint shows WAITING_APPROVAL
         val statusAfterWaitingApproval = http.getOrderStatus(orderWaitingApproval!!.id.toString())
@@ -145,15 +160,16 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         assertEquals(true, approvalToken!!.isValid())
 
         // assert reserved supplies
+        // total supply requirements: serviceAtCreation(2) + serviceAtDiagnosis(3) + extraAtCreation(1) + extraAtDiagnosis(2) = 8
         val requestedSupply = supplyRepository.findById(supply.id)!!
-        assertEquals(4, requestedSupply.quantityInStock) // 10 starting - 5 from services - 1 from extra supplies
+        assertEquals(12, requestedSupply.quantityInStock) // 20 starting - 8 total reserved
 
         // assert email was sent
         assertEquals(approvalToken?.id.toString(), emailInputSlot.captured.callbackToken)
         assertEquals(customer.name, emailInputSlot.captured.customerName)
         assertEquals(customer.email.value, emailInputSlot.captured.customerEmail)
         assertEquals(orderWaitingApproval!!.services.map { it.name }, emailInputSlot.captured.services.map { it.name })
-        assertEquals(listOf(OrderQuoteApprovalEmailInput.Supply(supply.name, 6, supply.price)), emailInputSlot.captured.supplies)
+        assertEquals(listOf(OrderQuoteApprovalEmailInput.Supply(supply.name, 8, supply.price)), emailInputSlot.captured.supplies)
 
         // approve order by token
         val approveOrderResponse = http.approveOrder(approvalToken!!.id.toString())

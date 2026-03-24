@@ -345,7 +345,7 @@ class OrderTest {
     }
 
     @Test
-    fun `should replace existing extra supplies`() {
+    fun `should append supply requirements to existing ones`() {
         val oldSupplyId = UUID.randomUUID()
         val newSupplyId = UUID.randomUUID()
         val order = createOrder().copy(extraSupplies = listOf(SupplyRequirement(oldSupplyId, 3)))
@@ -353,9 +353,23 @@ class OrderTest {
 
         val result = order.addSupplyRequirements(newRequirements)
 
+        assertEquals(2, result.extraSupplies.size)
+        val supplyMap = result.extraSupplies.associateBy { it.supplyId }
+        assertEquals(3, supplyMap[oldSupplyId]?.quantity)
+        assertEquals(7, supplyMap[newSupplyId]?.quantity)
+    }
+
+    @Test
+    fun `should consolidate supply requirements with same supplyId`() {
+        val supplyId = UUID.randomUUID()
+        val order = createOrder().copy(extraSupplies = listOf(SupplyRequirement(supplyId, 3)))
+        val newRequirements = listOf(SupplyRequirement(supplyId, 5))
+
+        val result = order.addSupplyRequirements(newRequirements)
+
         assertEquals(1, result.extraSupplies.size)
-        assertEquals(newSupplyId, result.extraSupplies[0].supplyId)
-        assertEquals(7, result.extraSupplies[0].quantity)
+        assertEquals(supplyId, result.extraSupplies[0].supplyId)
+        assertEquals(8, result.extraSupplies[0].quantity)
     }
 
     @Test

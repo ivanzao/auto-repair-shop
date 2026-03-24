@@ -63,14 +63,18 @@ class OrderUseCase(
             ?.takeIf { it.role == User.Role.ATTENDANT }
             ?: throw UserNotFoundException(request.attendantId)
 
-        return orderRepository.create(
-            Order(
-                customer = customer,
-                vehicle = vehicle,
-                attendant = attendant,
-                description = request.description,
-            )
-        )
+        val services = serviceRepository.findAllByIds(request.servicesIds)
+        validateRequestedServicesExists(services, request.servicesIds)
+
+        val order = Order(
+            customer = customer,
+            vehicle = vehicle,
+            attendant = attendant,
+            description = request.description,
+        ).addServices(services)
+            .addSupplyRequirements(request.extraSupplyRequirements)
+
+        return orderRepository.create(order)
     }
 
     fun scheduleVehicleDelivery(request: ScheduleOrderVehicleRequest) {

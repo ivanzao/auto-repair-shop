@@ -1493,11 +1493,24 @@ components:
           type: string
           format: uuid
           description: "ID do atendente que criou a ordem"
+        servicesIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: "IDs dos serviços a incluir na ordem"
+        extraSuppliesRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplyRequirementDTO"
+          description: "Insumos extras necessários além dos serviços (opcional)"
+          default: []
       required:
         - customerId
         - vehicleId
         - description
         - attendantId
+        - servicesIds
 
     OrderResponseDTO:
       type: object
@@ -1609,22 +1622,21 @@ components:
 
     FinishOrderDiagnosisRequestDTO:
       type: object
-      description: "Dados para finalizar diagnóstico"
+      description: "Dados para finalizar diagnóstico. Serviços e insumos informados são adicionados aos já existentes na ordem."
       properties:
         servicesIds:
           type: array
           items:
             type: string
             format: uuid
-          description: "IDs dos serviços necessários"
+          description: "IDs dos serviços adicionais (opcional)"
+          default: []
         extraSuppliesRequests:
           type: array
           items:
             $ref: "#/components/schemas/SupplyRequirementDTO"
-          description: "Insumos extras necessários além dos serviços"
-      required:
-        - servicesIds
-        - extraSuppliesRequests
+          description: "Insumos extras adicionais (opcional)"
+          default: []
 
     OrderScheduleVehicleRequestDTO:
       type: object
