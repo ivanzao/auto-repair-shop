@@ -97,9 +97,7 @@ fun main() {
     koinApplication.koin.get<ScheduledTaskRunner>().start(dataSource)
     logger.info("ScheduledTaskRunner started")
 
-    if (config.getString("application.profile") == "dev") {
-        createDevAdmin(koinApplication.koin)
-    }
+    createDevAdmin(koinApplication.koin)
 
     KtorHttpServer(
         koin = koinApplication.koin,
