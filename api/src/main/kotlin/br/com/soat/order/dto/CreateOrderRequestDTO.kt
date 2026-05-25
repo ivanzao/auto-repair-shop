@@ -10,12 +10,10 @@ data class CreateOrderRequestDTO(
     val description: String,
     val technician: String? = null,
 
-    val attendantId: UUID,
-
     val servicesIds: List<UUID>,
     val extraSuppliesRequests: List<SupplyRequirementDTO> = emptyList(),
 ) {
-    fun toModel() = CreateOrderRequest(
+    fun toModel(attendantId: UUID) = CreateOrderRequest(
         customerId = customerId,
         vehicleId = vehicleId,
         description = description,

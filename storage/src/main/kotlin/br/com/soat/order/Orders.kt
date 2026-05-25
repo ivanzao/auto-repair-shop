@@ -7,8 +7,6 @@ import br.com.soat.service.Services
 import br.com.soat.service.model.Service
 import br.com.soat.supply.Supplies
 import br.com.soat.supply.model.SupplyRequirement
-import br.com.soat.user.Users
-import br.com.soat.user.toUser
 import br.com.soat.vehicle.Vehicles
 import br.com.soat.vehicle.toVehicle
 import kotlinx.datetime.toJavaLocalDateTime
@@ -24,8 +22,8 @@ object Orders : Table() {
 
     val customerId = uuid("customer_id").references(Customers.id)
     val vehicleId = uuid("vehicle_id").references(Vehicles.id)
-    val attendantId = uuid("attendant_id").references(Users.id)
-    
+    val attendantId = uuid("attendant_id")
+
     val status = varchar("status", 50)
     val description = text("description")
     val technician = varchar("technician", 255).nullable()
@@ -65,7 +63,7 @@ fun ResultRow.toOrder(
     version = this[Orders.version],
     customer = this.toCustomer(),
     vehicle = this.toVehicle(),
-    attendant = this.toUser(),
+    attendantId = this[Orders.attendantId],
     services = services,
     extraSupplies = supplies,
     description = this[Orders.description],

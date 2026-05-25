@@ -13,9 +13,10 @@ logback = "1.5.21"
 flyway = "11.17.0"
 coroutines = "1.10.1"
 bouncycastle = "1.83"
-java-jwt = "4.5.0"
 shedlock = "7.5.0"
-mailersend = "1.4.1"
+aws-sdk-kotlin = "1.5.13"
+micrometer = "1.13.6"
+logstash-logback = "8.0"
 mockk = "1.14.7"
 sonarqube = "5.1.0.4882"
 
@@ -38,6 +39,11 @@ ktor-server-statusPages = { module = "io.ktor:ktor-server-status-pages", version
 ktor-server-swagger = { module = "io.ktor:ktor-server-swagger", version.ref = "ktor" }
 ktor-serialization-jackson = { module = "io.ktor:ktor-serialization-jackson-jvm", version.ref = "ktor" }
 ktor-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
+ktor-server-metrics-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor" }
+
+# Observability
+micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-logback" }
 
 # Jackson
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
@@ -68,13 +74,15 @@ bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.re
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
-java-jwt = { module = "com.auth0:java-jwt", version.ref = "java-jwt"}
-
 # ShedLock
 shedlock-core = { module = "net.javacrumbs.shedlock:shedlock-core", version.ref = "shedlock" }
 shedlock-provider-jdbc = { module = "net.javacrumbs.shedlock:shedlock-provider-jdbc", version.ref = "shedlock" }
 
-mailersend-sdk = { module = "com.mailersend:java-sdk", version.ref = "mailersend" }
+# AWS SDK Kotlin
+aws-sdk-kotlin-sns = { module = "aws.sdk.kotlin:sns", version.ref = "aws-sdk-kotlin" }
+aws-sdk-kotlin-sqs = { module = "aws.sdk.kotlin:sqs", version.ref = "aws-sdk-kotlin" }
+
+testcontainers-localstack = { module = "org.testcontainers:localstack", version.ref = "testcontainers" }
 
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 

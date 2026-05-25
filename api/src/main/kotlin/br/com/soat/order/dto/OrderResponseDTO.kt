@@ -4,7 +4,6 @@ import br.com.soat.customer.model.Customer
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.Order.Status
 import br.com.soat.service.model.Service
-import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
@@ -18,7 +17,7 @@ data class OrderResponseDTO(
 
     val customer: Customer,
     val vehicle: Vehicle,
-    val attendant: User,
+    val attendantId: UUID,
 
     val description: String,
     val services: List<Service>,
@@ -31,7 +30,7 @@ data class OrderResponseDTO(
             status = order.status,
             customer = order.customer,
             vehicle = order.vehicle,
-            attendant = order.attendant,
+            attendantId = order.attendantId,
             description = order.description,
             services = order.services,
             technician = order.technician,

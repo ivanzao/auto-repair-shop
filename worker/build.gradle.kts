@@ -9,4 +9,8 @@ dependencies {
     implementation(libs.slf4j.api)
     implementation(libs.shedlock.core)
     implementation(libs.shedlock.provider.jdbc)
+
+    implementation(libs.aws.sdk.kotlin.sns)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.datatype.jsr310)
 }

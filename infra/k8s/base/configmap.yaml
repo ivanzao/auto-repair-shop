@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auto-repair-shop-config
+data:
+  SERVER_PORT: "8080"
+  # DATABASE_URL, DATABASE_USERNAME, SNS_TOPIC_ARN são patched no overlay (lidos de SSM no CI)

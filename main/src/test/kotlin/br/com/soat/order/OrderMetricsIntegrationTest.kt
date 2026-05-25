@@ -1,6 +1,7 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
+import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderExecutionMetric
@@ -9,7 +10,6 @@ import br.com.soat.order.repository.OrderRepository
 import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.VehiclePlate
-import br.com.soat.user.createUser
 import br.com.soat.vehicle.createVehicle
 import java.time.LocalDateTime
 import java.util.UUID
@@ -32,7 +32,7 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should return zero metrics when no completed orders exist`() {
-        val bearerToken = loginAsAdmin()
+        val bearerToken = adminHeaders()
 
         val response = http.getOrderMetrics(bearerToken)
 
@@ -43,7 +43,7 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should calculate average execution time correctly`() {
-        val bearerToken = loginAsAdmin()
+        val bearerToken = adminHeaders()
 
         val order1Id = createOrderInDatabase()
         val order2Id = createOrderInDatabase()
@@ -85,7 +85,7 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should not count orders that are not completed`() {
-        val bearerToken = loginAsAdmin()
+        val bearerToken = adminHeaders()
 
         val order1Id = createOrderInDatabase()
         val order2Id = createOrderInDatabase()
@@ -116,12 +116,12 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
 
     private fun createOrderInDatabase(): UUID {
         val count = counter.incrementAndGet()
-        val userCpf = count.toString().padStart(11, '0')
+        val attendantDoc = count.toString().padStart(11, '0')
         val customerCpf = (count + 1000).toString().padStart(11, '0')
 
-        val attendant = createUser(
-            document = Document(userCpf),
-            email = Email("user$count@test.com")
+        val attendant = createAttendant(
+            document = attendantDoc,
+            email = "attendant$count@test.com"
         )
         val customer = createCustomer(
             document = Document(customerCpf),
@@ -134,7 +134,7 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             Order(
                 customer = customer,
                 vehicle = vehicle,
-                attendant = attendant,
+                attendantId = attendant.id,
                 description = "Test order for metrics"
             )
         )

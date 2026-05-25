@@ -9,8 +9,6 @@ servers:
     description: "Local development server"
 
 tags:
-  - name: Authentication
-    description: "Endpoints de autenticação e gerenciamento de tokens JWT"
   - name: Health
     description: "Health check da aplicação"
   - name: Order
@@ -23,65 +21,10 @@ tags:
     description: "Gerenciamento de insumos/peças"
   - name: Service
     description: "Gerenciamento de serviços oferecidos pela oficina"
-  - name: User
-    description: "Gerenciamento de usuários do sistema (Admin/Attendant)"
+  - name: Attendant
+    description: "Gerenciamento de atendentes da oficina (requer role ADMIN)"
 
 paths:
-  # ==================== AUTHENTICATION ====================
-  /login:
-    post:
-      tags:
-        - Authentication
-      summary: "Autenticar usuário"
-      description: "Realiza login e retorna tokens de acesso JWT"
-      operationId: login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AuthenticateUserRequestDTO"
-      responses:
-        "201":
-          description: "Autenticação realizada com sucesso"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthenticateUserResponseDTO"
-        "401":
-          description: "Credenciais inválidas"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /refresh:
-    post:
-      tags:
-        - Authentication
-      summary: "Renovar token de acesso"
-      description: "Utiliza refresh token para obter novo access token"
-      operationId: refreshToken
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshTokenRequestDTO"
-      responses:
-        "201":
-          description: "Token renovado com sucesso"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthenticateUserResponseDTO"
-        "401":
-          description: "Refresh token inválido ou expirado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   # ==================== ORDERS ====================
   /orders:
     get:
@@ -1208,27 +1151,33 @@ paths:
         "404":
           description: "Serviço não encontrado"
 
-  # ==================== USERS ====================
-  /users:
+  # ==================== ATTENDANTS ====================
+  /attendants:
     get:
       tags:
-        - User
-      summary: "Listar usuários"
-      description: "Retorna lista de usuários do sistema"
-      operationId: getAllUsers
+        - Attendant
+      summary: "Listar atendentes"
+      description: "Retorna lista de atendentes cadastrados (requer role ADMIN)"
+      operationId: getAllAttendants
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: "Lista de usuários"
+          description: "Lista de atendentes"
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/UserResponseDTO"
+                  $ref: "#/components/schemas/AttendantResponseDTO"
         "401":
           description: "Não autorizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Acesso negado (requer ADMIN)"
           content:
             application/json:
               schema:
@@ -1236,10 +1185,10 @@ paths:
 
     post:
       tags:
-        - User
-      summary: "Cadastrar novo usuário"
-      description: "Cria um novo usuário (Admin ou Attendant) no sistema"
-      operationId: createUser
+        - Attendant
+      summary: "Cadastrar novo atendente"
+      description: "Cria um novo atendente no sistema (requer role ADMIN)"
+      operationId: createAttendant
       security:
         - bearerAuth: []
       requestBody:
@@ -1247,45 +1196,51 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateUserRequestDTO"
+              $ref: "#/components/schemas/CreateAttendantRequestDTO"
       responses:
         "201":
-          description: "Usuário criado com sucesso"
+          description: "Atendente criado com sucesso"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponseDTO"
+                $ref: "#/components/schemas/AttendantResponseDTO"
         "401":
           description: "Não autorizado"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Acesso negado (requer ADMIN)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
-  /users/{id}:
+  /attendants/{id}:
     get:
       tags:
-        - User
-      summary: "Buscar usuário por ID"
-      description: "Retorna os dados de um usuário específico"
-      operationId: getUserById
+        - Attendant
+      summary: "Buscar atendente por ID"
+      description: "Retorna os dados de um atendente específico (requer role ADMIN)"
+      operationId: getAttendantById
       security:
         - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          description: "ID do usuário"
+          description: "ID do atendente"
           schema:
             type: string
             format: uuid
       responses:
         "200":
-          description: "Usuário encontrado"
+          description: "Atendente encontrado"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponseDTO"
+                $ref: "#/components/schemas/AttendantResponseDTO"
         "400":
           description: "ID inválido"
           content:
@@ -1301,22 +1256,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Acesso negado (requer ADMIN)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: "Usuário não encontrado"
+          description: "Atendente não encontrado"
 
     put:
       tags:
-        - User
-      summary: "Atualizar usuário"
-      description: "Atualiza os dados de um usuário existente"
-      operationId: updateUser
+        - Attendant
+      summary: "Atualizar atendente"
+      description: "Atualiza os dados de um atendente existente (requer role ADMIN)"
+      operationId: updateAttendant
       security:
         - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          description: "ID do usuário"
+          description: "ID do atendente"
           schema:
             type: string
             format: uuid
@@ -1325,14 +1286,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateUserRequestDTO"
+              $ref: "#/components/schemas/UpdateAttendantRequestDTO"
       responses:
         "200":
-          description: "Usuário atualizado"
+          description: "Atendente atualizado"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponseDTO"
+                $ref: "#/components/schemas/AttendantResponseDTO"
         "400":
           description: "ID inválido"
           content:
@@ -1348,28 +1309,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Acesso negado (requer ADMIN)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: "Usuário não encontrado"
+          description: "Atendente não encontrado"
 
     delete:
       tags:
-        - User
-      summary: "Remover usuário"
-      description: "Remove um usuário do sistema"
-      operationId: deleteUser
+        - Attendant
+      summary: "Remover atendente"
+      description: "Remove um atendente do sistema (requer role ADMIN)"
+      operationId: deleteAttendant
       security:
         - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          description: "ID do usuário"
+          description: "ID do atendente"
           schema:
             type: string
             format: uuid
       responses:
         "204":
-          description: "Usuário removido com sucesso"
+          description: "Atendente removido com sucesso"
         "400":
           description: "ID inválido"
           content:
@@ -1385,8 +1352,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "Acesso negado (requer ADMIN)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: "Usuário não encontrado"
+          description: "Atendente não encontrado"
 
 components:
   securitySchemes:
@@ -1397,81 +1370,23 @@ components:
       description: |
         Autenticação via JWT Bearer Token.
 
-        **Como obter o token:**
-        1. Faça POST em `/v1/login` com email e password
-        2. Use o `accessToken` retornado no header Authorization
+        O token é emitido pelo Lambda Authorizer no API Gateway (repositório separado).
+        O app decodifica as claims (`sub` → userId, `role`) sem re-validar a assinatura.
 
         **Formato do header:**
         ```
-        Authorization: Bearer <accessToken>
+        Authorization: Bearer <jwt>
         ```
 
         **Roles disponíveis:**
-        - `ADMIN`: Acesso total a todos os endpoints protegidos
-        - `ATTENDANT`: Acesso limitado (admin + attendant endpoints)
-
-        **Renovação do token:**
-        Use o endpoint `/v1/refresh` com o `refreshToken` para obter um novo `accessToken`
+        - `ADMIN`: Acesso total a todos os endpoints protegidos (incluindo `/attendants`)
+        - `ATTENDANT`: Acesso a endpoints de ordens, clientes, veículos, serviços e insumos
 
   schemas:
-    # ==================== AUTH DTOs ====================
-    AuthenticateUserRequestDTO:
-      type: object
-      description: "Credenciais para autenticação"
-      properties:
-        email:
-          type: string
-          format: email
-          description: "Email do usuário"
-          example: "admin@dev.com"
-        password:
-          type: string
-          format: password
-          description: "Senha do usuário"
-          example: "admin"
-      required:
-        - email
-        - password
-
-    AuthenticateUserResponseDTO:
-      type: object
-      description: "Resposta de autenticação com tokens"
-      properties:
-        accessToken:
-          type: string
-          description: "JWT access token para autenticação nas requisições"
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        refreshToken:
-          type: string
-          format: uuid
-          description: "Token para renovar o access token"
-          example: "550e8400-e29b-41d4-a716-446655440000"
-        expiresAt:
-          type: string
-          format: date-time
-          description: "Data/hora de expiração do access token (UTC)"
-          example: "2025-01-15T12:00:00Z"
-      required:
-        - accessToken
-        - refreshToken
-        - expiresAt
-
-    RefreshTokenRequestDTO:
-      type: object
-      description: "Request para renovar o access token"
-      properties:
-        refreshToken:
-          type: string
-          format: uuid
-          description: "Refresh token recebido no login"
-          example: "550e8400-e29b-41d4-a716-446655440000"
-      required:
-        - refreshToken
-
     # ==================== ORDER DTOs ====================
     CreateOrderRequestDTO:
       type: object
-      description: "Dados para criar uma nova ordem de serviço"
+      description: "Dados para criar uma nova ordem de serviço. O attendantId é extraído automaticamente do JWT pelo servidor."
       properties:
         customerId:
           type: string
@@ -1489,10 +1404,6 @@ components:
           type: string
           nullable: true
           description: "Nome do técnico responsável (opcional)"
-        attendantId:
-          type: string
-          format: uuid
-          description: "ID do atendente que criou a ordem"
         servicesIds:
           type: array
           items:
@@ -1509,7 +1420,6 @@ components:
         - customerId
         - vehicleId
         - description
-        - attendantId
         - servicesIds
 
     OrderResponseDTO:
@@ -1528,8 +1438,10 @@ components:
           $ref: "#/components/schemas/Customer"
         vehicle:
           $ref: "#/components/schemas/Vehicle"
-        attendant:
-          $ref: "#/components/schemas/User"
+        attendantId:
+          type: string
+          format: uuid
+          description: "ID do atendente que criou a ordem"
         description:
           type: string
         services:
@@ -1545,7 +1457,7 @@ components:
         - status
         - customer
         - vehicle
-        - attendant
+        - attendantId
         - description
         - services
 
@@ -1896,76 +1808,64 @@ components:
         - price
         - requiredSupplies
 
-    # ==================== USER DTOs ====================
-    CreateUserRequestDTO:
+    # ==================== ATTENDANT DTOs ====================
+    CreateAttendantRequestDTO:
       type: object
-      description: "Dados para cadastrar um usuário do sistema"
+      description: "Dados para cadastrar um atendente"
       properties:
         name:
           type: string
           description: "Nome completo"
-          example: "Carlos Admin"
+          example: "Carlos Atendente"
         document:
           type: string
-          description: "CPF do usuário"
+          description: "CPF do atendente"
           example: "111.222.333-44"
         email:
           type: string
           format: email
-          description: "Email do usuário"
+          description: "Email do atendente"
           example: "carlos@autorepair.com"
         contact:
           type: string
           description: "Telefone de contato"
           example: "(11) 98888-7777"
-        password:
-          type: string
-          format: password
-          description: "Senha do usuário"
-          example: "senhaSegura123"
-        role:
-          $ref: "#/components/schemas/UserRole"
       required:
         - name
         - document
         - email
         - contact
-        - password
-        - role
 
-    UpdateUserRequestDTO:
+    UpdateAttendantRequestDTO:
       type: object
-      description: "Dados para atualizar um usuário do sistema"
+      description: "Dados para atualizar um atendente"
       properties:
         name:
           type: string
           description: "Nome completo"
-          example: "Carlos Admin Atualizado"
+          example: "Carlos Atendente Atualizado"
         document:
           type: string
-          description: "CPF do usuário"
+          description: "CPF do atendente"
           example: "111.222.333-44"
         email:
           type: string
           format: email
-          description: "Email do usuário"
+          description: "Email do atendente"
           example: "carlos.novo@autorepair.com"
         contact:
           type: string
           description: "Telefone de contato"
           example: "(11) 98888-7777"
-        role:
-          $ref: "#/components/schemas/UserRole"
       required:
         - name
         - document
         - email
         - contact
-        - role
 
-    UserResponseDTO:
+    AttendantResponseDTO:
       type: object
-      description: "Dados do usuário"
+      description: "Dados do atendente"
       properties:
         id:
           type: string
@@ -1978,22 +1878,20 @@ components:
           type: string
         contact:
           type: string
-        role:
+        createdAt:
           type: string
+          format: date-time
+        modifiedAt:
+          type: string
+          format: date-time
       required:
         - id
         - name
         - document
         - email
         - contact
-        - role
-
-    UserRole:
-      type: string
-      description: "Papel do usuário no sistema"
-      enum:
-        - ADMIN
-        - ATTENDANT
+        - createdAt
+        - modifiedAt
 
     # ==================== DOMAIN ENTITIES ====================
     Customer:
@@ -2070,44 +1968,6 @@ components:
         - brand
         - model
         - year
-
-    User:
-      type: object
-      description: "Entidade Usuário completa"
-      properties:
-        id:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
-        modifiedAt:
-          type: string
-          format: date-time
-        version:
-          type: integer
-          format: int32
-          default: 0
-        name:
-          type: string
-        document:
-          type: string
-        email:
-          type: string
-        contact:
-          type: string
-        role:
-          $ref: "#/components/schemas/UserRole"
-      required:
-        - id
-        - createdAt
-        - modifiedAt
-        - version
-        - name
-        - document
-        - email
-        - contact
-        - role
 
     Service:
       type: object

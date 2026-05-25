@@ -1,13 +1,9 @@
 package br.com.soat.supply
 
 import br.com.soat.IntegrationTest
-import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.supply.dto.CreateSupplyRequestDTO
 import br.com.soat.supply.repository.SupplyRepository
-import br.com.soat.user.createUser
 import java.math.BigDecimal
-import java.time.LocalDateTime
-import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -15,12 +11,10 @@ import org.junit.jupiter.api.Test
 class SupplyIntegrationTest : IntegrationTest() {
 
     private val supplyRepository: SupplyRepository by lazy { get<SupplyRepository>() }
-    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
 
     @Test
     fun `should get supply by id`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val createRequestDto = CreateSupplyRequestDTO(
             name = "Porca",
@@ -45,8 +39,7 @@ class SupplyIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should create supply successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val requestDto = CreateSupplyRequestDTO(
             name = "Parafuso",
@@ -67,8 +60,7 @@ class SupplyIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should update supply`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val createRequestDto = CreateSupplyRequestDTO(
             name = "Arruela",
@@ -100,8 +92,7 @@ class SupplyIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should delete supply`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val createRequestDto = CreateSupplyRequestDTO(
             name = "To Delete",

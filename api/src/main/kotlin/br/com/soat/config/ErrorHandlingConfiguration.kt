@@ -1,7 +1,5 @@
 package br.com.soat.config
 
-import br.com.soat.auth.exception.InvalidLoginCredentialsException
-import br.com.soat.auth.exception.InvalidRefreshTokenException
 import br.com.soat.customer.exception.CustomerNotFoundException
 import br.com.soat.order.exception.OrderNotFoundException
 import br.com.soat.order.exception.ServiceNotFoundException
@@ -11,7 +9,7 @@ import br.com.soat.shared.dto.ValidationErrorDTO
 import br.com.soat.shared.dto.toErrorResponseDTO
 import br.com.soat.shared.exception.ApplicationException
 import br.com.soat.supply.exception.SupplyNotFoundException
-import br.com.soat.user.exception.UserNotFoundException
+import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.vehicle.exception.VehicleNotFoundException
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.exc.InvalidNullException
@@ -20,7 +18,6 @@ import com.fasterxml.jackson.databind.exc.ValueInstantiationException
 import io.ktor.http.HttpStatusCode.Companion.BadRequest
 import io.ktor.http.HttpStatusCode.Companion.InternalServerError
 import io.ktor.http.HttpStatusCode.Companion.NotFound
-import io.ktor.http.HttpStatusCode.Companion.Unauthorized
 import io.ktor.http.HttpStatusCode.Companion.UnprocessableEntity
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -33,15 +30,13 @@ fun Application.configureErrorHandling() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             val (statusCode, body) = when (cause) {
-                is InvalidLoginCredentialsException,
-                is InvalidRefreshTokenException -> Unauthorized to cause.toErrorResponseDTO()
+                is AttendantNotFoundException -> NotFound to ErrorResponseDTO("NOT_FOUND", cause.message ?: "Not found")
 
                 is OrderNotFoundException,
                 is ServiceNotFoundException,
                 is SupplyNotFoundException,
                 is CustomerNotFoundException,
-                is VehicleNotFoundException,
-                is UserNotFoundException -> NotFound to cause.toErrorResponseDTO()
+                is VehicleNotFoundException -> NotFound to cause.toErrorResponseDTO()
 
                 is ApplicationException -> UnprocessableEntity to cause.toErrorResponseDTO()
 

@@ -1,11 +1,8 @@
 package br.com.soat.vehicle
 
 import br.com.soat.IntegrationTest
-import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
-import br.com.soat.user.createUser
 import br.com.soat.vehicle.dto.CreateVehicleRequestDTO
-import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -15,24 +12,22 @@ import org.junit.jupiter.api.Test
 class VehicleIntegrationTest : IntegrationTest() {
 
     private val vehicleRepository: VehicleRepository by lazy { get<VehicleRepository>() }
-    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
 
-    private fun createCustomer(bearerToken: String): UUID {
+    private fun createCustomer(authHeaders: Map<String, String>): UUID {
         val requestDto = CreateCustomerRequestDTO(
             name = "Test Customer",
             document = Random.nextLong(10000000000L, 99999999999L).toString(),
             email = "test${Random.nextLong()}@example.com",
             contact = "11 99999-9999"
         )
-        val response = http.createCustomer(requestDto, bearerToken)
+        val response = http.createCustomer(requestDto, authHeaders)
         return UUID.fromString(response.body().id)
     }
 
     @Test
     fun `should get vehicle by id`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-        val clientId = createCustomer(bearerToken)
+        val authHeaders = adminHeaders()
+        val clientId = createCustomer(authHeaders)
 
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
@@ -42,11 +37,11 @@ class VehicleIntegrationTest : IntegrationTest() {
             year = 2023
         )
 
-        val createResponse = http.createVehicle(createRequestDto, bearerToken)
+        val createResponse = http.createVehicle(createRequestDto, authHeaders)
         assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val vehicleId = createResponse.body().id
-        val getResponse = http.getVehicle(vehicleId, bearerToken)
+        val getResponse = http.getVehicle(vehicleId, authHeaders)
         assertEquals(200, getResponse.statusCode(), "HTTP status code must be 200 OK")
 
         val fetchedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))!!
@@ -59,9 +54,8 @@ class VehicleIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should create vehicle successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-        val clientId = createCustomer(bearerToken)
+        val authHeaders = adminHeaders()
+        val clientId = createCustomer(authHeaders)
 
         val requestDto = CreateVehicleRequestDTO(
             clientId = clientId,
@@ -71,7 +65,7 @@ class VehicleIntegrationTest : IntegrationTest() {
             year = 2024
         )
 
-        val createVehicleResponse = http.createVehicle(requestDto, bearerToken)
+        val createVehicleResponse = http.createVehicle(requestDto, authHeaders)
         assertEquals(201, createVehicleResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val createdVehicle = vehicleRepository.findById(UUID.fromString(createVehicleResponse.body().id))!!
@@ -84,9 +78,8 @@ class VehicleIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should update vehicle`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-        val clientId = createCustomer(bearerToken)
+        val authHeaders = adminHeaders()
+        val clientId = createCustomer(authHeaders)
 
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
@@ -96,7 +89,7 @@ class VehicleIntegrationTest : IntegrationTest() {
             year = 2022
         )
 
-        val createResponse = http.createVehicle(createRequestDto, bearerToken)
+        val createResponse = http.createVehicle(createRequestDto, authHeaders)
         assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val vehicleId = createResponse.body().id
@@ -108,7 +101,7 @@ class VehicleIntegrationTest : IntegrationTest() {
             year = 2022
         )
 
-        val updateResponse = http.updateVehicle(vehicleId, updateRequestDto, bearerToken)
+        val updateResponse = http.updateVehicle(vehicleId, updateRequestDto, authHeaders)
         assertEquals(200, updateResponse.statusCode(), "HTTP status code must be 200 OK")
 
         val updatedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))!!
@@ -121,9 +114,8 @@ class VehicleIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should delete vehicle`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
-        val clientId = createCustomer(bearerToken)
+        val authHeaders = adminHeaders()
+        val clientId = createCustomer(authHeaders)
 
         val createRequestDto = CreateVehicleRequestDTO(
             clientId = clientId,
@@ -133,14 +125,14 @@ class VehicleIntegrationTest : IntegrationTest() {
             year = 2000
         )
 
-        val createResponse = http.createVehicle(createRequestDto, bearerToken)
+        val createResponse = http.createVehicle(createRequestDto, authHeaders)
         assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val vehicleId = createResponse.body().id
-        val deleteResponse = http.deleteVehicle(vehicleId, bearerToken)
+        val deleteResponse = http.deleteVehicle(vehicleId, authHeaders)
         assertEquals(204, deleteResponse.statusCode(), "HTTP status code must be 204 No Content")
 
-        val getResponse = http.getVehicle(vehicleId, bearerToken)
+        val getResponse = http.getVehicle(vehicleId, authHeaders)
         assertEquals(404, getResponse.statusCode(), "HTTP status code must be 404 Not Found")
 
         val deletedVehicle = vehicleRepository.findById(UUID.fromString(vehicleId))

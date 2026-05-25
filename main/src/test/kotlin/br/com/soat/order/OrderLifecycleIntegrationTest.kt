@@ -1,10 +1,8 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
-import br.com.soat.auth.port.AuthenticationTokenProvider
+import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
-import br.com.soat.mail.EmailService
-import br.com.soat.mail.model.OrderQuoteApprovalEmailInput
 import br.com.soat.order.dto.CreateOrderRequestDTO
 import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
@@ -21,12 +19,8 @@ import br.com.soat.order.repository.OrderScheduleRepository
 import br.com.soat.supply.repository.SupplyRepository
 import br.com.soat.supply.createSupply
 import br.com.soat.supply.model.SupplyRequirement
-import br.com.soat.user.createUser
-import br.com.soat.user.model.User
 import br.com.soat.vehicle.createVehicle
 import br.com.soat.waitFor
-import io.mockk.every
-import io.mockk.slot
 import java.time.LocalDateTime
 import java.time.ZoneOffset.UTC
 import java.time.format.DateTimeFormatter
@@ -37,35 +31,29 @@ import org.junit.jupiter.api.Test
 
 class OrderLifecycleIntegrationTest : IntegrationTest() {
 
-    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
     private val orderRepository: OrderRepository by lazy { get<OrderRepository>() }
     private val orderScheduleRepository: OrderScheduleRepository by lazy { get<OrderScheduleRepository>() }
     private val orderApprovalTokenRepository: OrderApprovalTokenRepository by lazy { get<OrderApprovalTokenRepository>() }
     private val orderExecutionMetricRepository: OrderExecutionMetricRepository by lazy { get<OrderExecutionMetricRepository>() }
-    private val emailService: EmailService by lazy { get<EmailService>() }
     private val supplyRepository: SupplyRepository by lazy { get<SupplyRepository>() }
 
     @Test
     fun `should complete full order lifecycle`() {
         // prepare
-        val attendant = createUser(role = User.Role.ATTENDANT)
+        val attendant = createAttendant()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
         val supply = createSupply(quantityInStock = 20)
         val serviceAtCreation = createService(name = "Oil Change", requiredSupplies = listOf(SupplyRequirement(supply.id, 2)))
         val serviceAtDiagnosis = createService(name = "Brake Repair", requiredSupplies = listOf(SupplyRequirement(supply.id, 3)))
 
-        val bearerToken = tokenProvider.generate(attendant, LocalDateTime.now().plusDays(1))
-
-        val emailInputSlot = slot<OrderQuoteApprovalEmailInput>()
-        every { emailService.sendOrderQuoteApprovalEmail(capture(emailInputSlot)) } answers {}
+        val bearerToken = attendantHeaders(attendant.id)
 
         // create order with 1 service and 1 extra supply
         val requestDto = CreateOrderRequestDTO(
             customerId = customer.id,
             vehicleId = vehicle.id,
             description = "Noise in the engine",
-            attendantId = attendant.id,
             servicesIds = listOf(serviceAtCreation.id),
             extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 1))
         )
@@ -76,7 +64,7 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         val createdOrder = orderRepository.findById(createOrderResponse.body().id)!!
         assertEquals(customer.id, createdOrder.customer.id)
         assertEquals(vehicle.id, createdOrder.vehicle.id)
-        assertEquals(attendant.id, createdOrder.attendant.id)
+        assertEquals(attendant.id, createdOrder.attendantId)
         assertEquals(requestDto.description, createdOrder.description)
         assertEquals(Order.Status.RECEIVED, createdOrder.status)
         assertEquals(listOf(serviceAtCreation.id), createdOrder.services.map { it.id })
@@ -164,12 +152,20 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         val requestedSupply = supplyRepository.findById(supply.id)!!
         assertEquals(12, requestedSupply.quantityInStock) // 20 starting - 8 total reserved
 
-        // assert email was sent
-        assertEquals(approvalToken?.id.toString(), emailInputSlot.captured.callbackToken)
-        assertEquals(customer.name, emailInputSlot.captured.customerName)
-        assertEquals(customer.email.value, emailInputSlot.captured.customerEmail)
-        assertEquals(orderWaitingApproval!!.services.map { it.name }, emailInputSlot.captured.services.map { it.name })
-        assertEquals(listOf(OrderQuoteApprovalEmailInput.Supply(supply.name, 8, supply.price)), emailInputSlot.captured.supplies)
+        // assert SendQuoteEmailCommand was published to SNS (received via LocalStack SQS subscriber)
+        val msg = waitForSnsMessage("SendQuoteEmailCommand")
+
+        assertEquals(orderWaitingApproval!!.id.toString(), msg["orderId"].asText())
+        assertEquals(approvalToken!!.id.toString(), msg["callbackToken"].asText())
+        assertEquals(customer.name, msg["customerName"].asText())
+        assertEquals(customer.email.value, msg["customerEmail"].asText())
+        assertEquals(
+            orderWaitingApproval!!.services.map { it.name },
+            msg["services"].map { it["name"].asText() },
+        )
+        assertEquals(1, msg["supplies"].size())
+        assertEquals(supply.name, msg["supplies"][0]["name"].asText())
+        assertEquals(8, msg["supplies"][0]["quantity"].asInt())
 
         // approve order by token
         val approveOrderResponse = http.approveOrder(approvalToken!!.id.toString())

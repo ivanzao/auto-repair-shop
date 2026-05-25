@@ -12,18 +12,52 @@ auto-repair-shop/
 ├── domain/                # Logica de negocio (modelos, use cases, ports)
 ├── api/                   # REST API (Ktor routes, DTOs)
 ├── storage/               # Persistencia (Exposed, Flyway migrations)
-├── worker/                # Background jobs (EventBus, CommandBus)
-├── jwt/                   # Autenticacao JWT
-├── email/                 # Integracao MailerSend
+├── worker/                # Background jobs (EventBus, CommandBus, SNS relay)
 ├── infra/
-│   ├── k8s/               # Manifestos Kubernetes
-│   ├── terraform/         # Terraform (AWS EKS, RDS, VPC)
+│   ├── k8s/               # Kustomize (base/ + overlays/{hml,prod}/)
 │   └── load-test/         # Teste de carga (K6)
 ├── .github/workflows/     # CI/CD Pipeline
 ├── Dockerfile             # Multi-stage build (JDK + JRE)
 ├── docker-compose.yaml    # Orquestracao local (app + PostgreSQL)
 └── build.gradle.kts       # Build principal
 ```
+
+> **Infraestrutura AWS e plataforma K8s** (VPC, EKS, RDS, ALB Controller, Prometheus Operator, OTel Operator, Alloy/Loki/Tempo, ServiceAccount IRSA, Namespace) vivem no repositório separado [`auto-repair-shop-infra`](../auto-repair-shop-infra/). Este repo só carrega manifestos app-específicos (Deployment, Service, ConfigMap, HPA, ServiceMonitor) via Kustomize. O contrato com o infra é por **convenções K8s** (nomes de namespace/SA, CRDs do OTel Operator e Prometheus Operator) — sem referência direta a recursos AWS.
+
+---
+
+## Arquitetura
+
+### Authentication
+
+O app **não valida assinatura JWT** nem armazena credenciais. Toda autenticação é delegada ao **API Gateway + Lambda Authorizer** (em outro repo). O app recebe o `Authorization: Bearer <jwt>` já validado pelo API Gateway, decodifica as claims (`sub` → `userId`, `role`) e confia.
+
+- Rotas protegidas usam `authenticate("admin")` ou `authenticate("attendant")` (Ktor) com `JwtBearerAuthenticationProvider`.
+- Sem `Authorization: Bearer <jwt>` → `401 Unauthorized`.
+- Role inválida para o endpoint → `403 Forbidden`.
+
+### Event Outbox → SNS
+
+Eventos de domínio marcados como `external = true` (ex.: `QuoteEmailRequestedEvent`) são gravados na tabela `events` (outbox) dentro da mesma transação que gera o efeito. O `EventProcessorTask` (scheduler periódico) lê o outbox e o `SnsRelayEventHandler` publica o payload no SNS. O Lambda de envio de email consome do SQS subscrito ao tópico.
+
+```
+[OrderListenerUseCase.sendQuoteApprovalEmail]
+        │
+        ▼
+[events table] ──(EventProcessorTask)──▶ [SnsRelayEventHandler] ──▶ SNS
+                                                                     │
+                                                                     ▼
+                                                                   SQS ──▶ Lambda (MailerSend)
+```
+
+Eventos `external = false` (ex.: `OrderCompletedEvent`) seguem o fluxo in-memory via `EventBus`.
+
+### Observability
+
+- **Metrics**: Micrometer + Prometheus em `/metrics`. ServiceMonitor (Prometheus Operator instalado pelo infra) faz scrape a cada 30s.
+- **Logs**: JSON estruturado via logstash-logback-encoder. Inclui `traceId`/`spanId`/`requestId` do MDC. O Alloy daemonset (instalado pelo infra) coleta e manda pro Loki.
+- **Tracing**: auto-injetado pelo OpenTelemetry Operator (instalado pelo infra). O Deployment do app traz a annotation `instrumentation.opentelemetry.io/inject-java: "true"` que ativa o injection do agent Java. Traces vão pro Tempo via Alloy.
+- **Counters de negócio**: `orders_created_total`.
 
 ---
 
@@ -33,13 +67,15 @@ auto-repair-shop/
 - **JVM**: Java 21
 - **Build**: Gradle 8.14 (Kotlin DSL)
 - **Web Framework**: Ktor 3.3.3
-- **Dependency Injection**: Koin 4.1.1
+- **DI**: Koin 4.1.1
 - **Database**: PostgreSQL 18.1
 - **ORM**: Exposed 0.61.0
 - **Migrations**: Flyway
+- **Messaging**: AWS SDK for Kotlin (SNS)
+- **Observability**: Micrometer Prometheus, logstash-logback-encoder
 - **Testing**: JUnit 5, MockK, TestContainers
 - **Quality**: JaCoCo, SonarQube
-- **Infra**: Docker, Kubernetes, Terraform, GitHub Actions
+- **Infra (app-side)**: Docker, Kustomize, GitHub Actions
 
 ---
 
@@ -47,213 +83,96 @@ auto-repair-shop/
 
 ### Opcao 1: Docker Compose (Recomendado)
 
-**Pre-requisitos:** Docker, Docker Compose e Java 21
-
 ```bash
-# Build do JAR
 ./gradlew :main:shadowJar
-
-# Build e start dos containers
 docker-compose up --build -d
-
-# Verificar logs
 docker-compose logs -f app
-
-# Parar
-docker-compose down
 ```
 
 Acesse:
 - API: http://localhost:8080/v1
 - Swagger UI: http://localhost:8080/swagger
-- Health Check: http://localhost:8080/health
+- Health: http://localhost:8080/health
+- Metrics: http://localhost:8080/metrics
 
 ### Opcao 2: Execucao Local (sem Docker)
 
-**Pre-requisitos:** Java 21, PostgreSQL rodando localmente
-
 ```bash
-# Build
 ./gradlew build
-
-# Executar
 ./gradlew :main:run
 ```
 
-### Banco de dados local (Docker Compose)
+### Banco local
 
 ```
-Host: localhost
-Port: 5432
-Database: auto-repair-shop
-Username: app
-Password: test
+Host: localhost   Port: 5432   Database: auto-repair-shop
+Username: app     Password: test
 ```
-
----
-
-## Dockerfile Multi-stage
-
-| Stage | Uso | Descricao |
-|-------|-----|-----------|
-| `build` | CI | Compila o JAR com Gradle (JDK 21) |
-| `runtime` | Base interna | JRE 21 + usuario non-root (base para production e dev) |
-| `production` | CI/CD, EKS | runtime + JAR do build stage |
-| `dev` | docker-compose local | runtime + JAR pre-compilado localmente |
 
 ---
 
 ## Testes
 
 ```bash
-# Testes unitarios
-./gradlew test
-
-# Testes de integracao (requer Docker para TestContainers)
-./gradlew integrationTest
-
-# Cobertura de codigo (JaCoCo)
-./gradlew jacocoAggregatedReport
-# Relatorio em: build/reports/jacoco/jacocoAggregatedReport/html/index.html
+./gradlew test                    # Unitarios
+./gradlew integrationTest         # Requer Docker (TestContainers Postgres + LocalStack SNS/SQS)
+./gradlew jacocoAggregatedReport  # Relatorio em build/reports/jacoco/...
 ```
 
 ---
 
 ## Load Test (K6)
 
-**Pre-requisito:** [K6](https://k6.io/) instalado
-
 ```bash
-k6 run --env K6_BASE_URL=<LOAD_BALANCER_URL> infra/load-test/k6-stress-test.js
+k6 run --env K6_BASE_URL=<API_GW_URL> infra/load-test/k6-stress-test.js
 ```
-
-Stages: warm-up 5 VUs (30s) → ramp-up 15 VUs (1m) → stress 25 VUs (2m) → sustain 25 VUs (3m) → cool-down (1m)
 
 ---
 
-## Deploy em Kubernetes
+## Deploy em Kubernetes (Kustomize)
 
-### Usando manifestos diretamente
+```
+infra/k8s/
+├── base/
+│   ├── deployment.yaml         # Container, probes, envFrom
+│   ├── service.yaml            # NLB privado (interno)
+│   ├── configmap.yaml          # SERVER_PORT, etc.
+│   ├── hpa.yaml                # CPU 70% (min/max definidos no overlay)
+│   ├── servicemonitor.yaml     # Prometheus scrape de /metrics
+│   ├── serviceaccount.yaml     # IRSA annotation injetada no overlay
+│   └── kustomization.yaml
+└── overlays/
+    ├── hml/{kustomization,deployment-patch,configmap-patch,serviceaccount-patch}.yaml
+    └── prod/{kustomization,deployment-patch,configmap-patch,serviceaccount-patch}.yaml
+```
+
+### Aplicar manualmente
 
 ```bash
-# Aplicar todos os manifestos
-kubectl apply -f infra/k8s/
-
-# Verificar pods
-kubectl get pods -n auto-repair-shop
-
-# Verificar servicos
-kubectl get svc -n auto-repair-shop
-
-# Ver logs da aplicacao
-kubectl logs -f deployment/auto-repair-shop -n auto-repair-shop
+kubectl kustomize infra/k8s/overlays/hml | kubectl apply -f -
 ```
 
-**Importante:** Os secrets (DB, JWT, MailerSend) sao criados automaticamente pelo CI/CD a partir dos GitHub Secrets. Nao ha arquivo de secrets versionado no repositorio.
+### Valores dinâmicos por env
 
-### Arquivos K8s
+O CI lê 4 params do SSM, busca credenciais do DB no Secrets Manager (JSON com host/port/dbname/username/password) e patcheia o ConfigMap antes do apply:
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `namespace.yaml` | Namespace `auto-repair-shop` |
-| `configmap.yaml` | Configuracoes nao-sensiveis |
-| `deployment.yaml` | App (2 replicas, health probes) |
-| `service.yaml` | LoadBalancer na porta 8080 |
-| `hpa.yaml` | HPA 2-4 replicas (CPU 70%) |
-| `metrics-server.yaml` | Metrics Server (necessario para HPA) |
+| Param SSM | Conteúdo | Uso |
+|-----------|----------|-----|
+| `/auto-repair-shop/{env}/eks/cluster-name` | nome do cluster EKS | `aws eks update-kubeconfig` |
+| `/auto-repair-shop/{env}/db/secret-arn` | ARN do Secrets Manager com credenciais do app | `aws secretsmanager get-secret-value` → JSON com host, port, dbname, username, password |
+| `/auto-repair-shop/{env}/sns/events-topic-arn` | ARN do tópico SNS de eventos | `SNS_TOPIC_ARN` no ConfigMap |
+| `/auto-repair-shop/{env}/apigw/endpoint` | endpoint do API Gateway | smoke test pós-deploy |
 
----
-
-## Infraestrutura Provisionada — Terraform (AWS)
-
-### Estrutura de Modulos
-
-```
-infra/terraform/
-├── main.tf              # Orquestra os modulos
-├── variables.tf         # Variaveis do root
-├── outputs.tf           # Outputs do root
-├── providers.tf         # Provider AWS
-├── modules/
-│   ├── vpc/             # VPC, subnets, IGW, NAT Gateway, route tables
-│   ├── eks/             # EKS cluster e node group
-│   └── rds/             # RDS PostgreSQL, security group, subnet group
-```
-
-### Dependencias entre modulos
-
-```
-VPC → EKS (subnet IDs)
-VPC + EKS → RDS (vpc_id, subnet IDs, EKS security group)
-```
-
-### Recursos Provisionados
-
-| Modulo | Recursos |
-|--------|----------|
-| **vpc** | VPC, 2 subnets publicas, 2 subnets privadas, Internet Gateway, NAT Gateway, route tables |
-| **eks** | EKS cluster (v1.35), managed node group (t3.small, 2-3 nodes) |
-| **rds** | PostgreSQL 16 (db.t3.micro), DB subnet group, security group |
-
-### Pre-requisitos
-
-- [Terraform](https://www.terraform.io/downloads) >= 1.5.0
-- [AWS CLI](https://aws.amazon.com/cli/) configurado com credenciais
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-
-### Variaveis
-
-| Variavel | Descricao | Default |
-|----------|-----------|---------|
-| `aws_region` | Regiao AWS | `us-east-1` |
-| `cluster_name` | Nome do cluster EKS | `auto-repair-shop-cluster` |
-| `db_password` | Senha do PostgreSQL (sensivel) | — |
-| `public_access_cidrs` | CIDRs com acesso ao API server EKS | `["0.0.0.0/0"]` |
-| `node_instance_type` | Tipo da instancia EC2 | `t3.small` |
-
-### Como Aplicar
-
-```bash
-cd infra/terraform/
-
-terraform init
-terraform plan
-terraform apply
-
-# Configurar kubectl
-aws eks update-kubeconfig --name auto-repair-shop-cluster --region us-east-1
-```
-
-### Como Destruir
-
-```bash
-terraform destroy
-```
-
-### Outputs
-
-| Output | Descricao |
-|--------|-----------|
-| `cluster_endpoint` | Endpoint do cluster EKS |
-| `cluster_name` | Nome do cluster EKS |
-| `rds_endpoint` | Endpoint do PostgreSQL RDS |
+Todos os 4 params são **obrigatórios** — se algum não existir, o deploy falha no step de leitura SSM. Os dois primeiros são publicados hoje em `hml/ssm.tf`/`prod/ssm.tf` no `auto-repair-shop-infra`. SNS e APIGW serão publicados pelos sub-projetos correspondentes (Plans de Lambda + API Gateway).
 
 ---
 
 ## CI/CD Pipeline
 
-### `pr-check.yaml` — PRs para main
-
-- Testes unitarios e de integracao
-
-### `build-and-deploy.yaml` — Push para main
-
-| Job | Descricao |
-|-----|-----------|
-| `test` | Testes unitarios e de integracao |
-| `build` | Build e push da imagem Docker para GHCR |
-| `terraform` | Provisionamento da infra AWS (S3 state, EKS, RDS) |
-| `deploy` | Aplica manifestos K8s, cria secrets, patch configmap (RDS endpoint + LB hostname), atualiza imagem, smoke test |
+| Workflow | Trigger | Jobs |
+|----------|---------|------|
+| `pr-check.yaml` | PRs para `main`/`develop` | Unit + integration tests + Kustomize lint |
+| `build-and-deploy.yaml` | Push `main` (prod) ou `develop` (hml) | Test → Build (Docker → GHCR) → Deploy (Kustomize + SSM) |
 
 ### Secrets necessarios no GitHub
 
@@ -262,12 +181,9 @@ terraform destroy
 | `AWS_ACCESS_KEY_ID` | Chave de acesso AWS |
 | `AWS_SECRET_ACCESS_KEY` | Chave secreta AWS |
 | `AWS_SESSION_TOKEN` | Token de sessao AWS |
-| `DB_PASSWORD` | Senha do PostgreSQL (RDS) |
-| `JWT_SECRET` | Secret para assinatura JWT |
-| `MAILERSEND_TOKEN` | Token da API MailerSend |
 | `GHCR_PAT` | Personal Access Token para GHCR |
 
-> `AWS_REGION` e `RDS_ENDPOINT` nao sao secrets — regiao esta hardcoded no workflow e o RDS endpoint vem do output do Terraform.
+Tudo mais (DB endpoint, SNS ARN, API GW endpoint) vem do SSM. A senha do DB vem do Secrets Manager (ARN lido do SSM).
 
 ---
 
@@ -276,4 +192,6 @@ terraform destroy
 - **Base path**: `/v1`
 - **Swagger UI**: [`/swagger`](http://localhost:8080/swagger)
 - **Health check**: `/health`
-- **Autenticacao**: JWT Bearer tokens (roles: ADMIN e ATTENDANT)
+- **Metrics**: `/metrics`
+- **Autenticacao**: `Authorization: Bearer <jwt>` (validado pelo Lambda Authorizer no API Gateway; app decoda claims sem re-validar assinatura)
+- **Attendants**: gerenciamento via `/v1/attendants` (CRUD restrito a `ADMIN`); provisionamento de credenciais é responsabilidade do Lambda/Cognito

@@ -1,11 +1,11 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
+import br.com.soat.attendant.AttendantRepository
+import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.model.Order
 import br.com.soat.order.repository.OrderRepository
-import br.com.soat.user.createUser
-import br.com.soat.user.model.User
 import br.com.soat.vehicle.createVehicle
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -20,10 +20,10 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should exclude COMPLETED, DELIVERED and CANCELED orders from listing`() {
-        val attendant = createUser(role = User.Role.ATTENDANT)
+        val attendant = createAttendant()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
-        val bearerToken = loginAsAdmin()
+        val bearerToken = adminHeaders()
 
         val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
 
@@ -59,10 +59,10 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should sort by status priority and then by creation date ascending`() {
-        val attendant = createUser(role = User.Role.ATTENDANT)
+        val attendant = createAttendant()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
-        val bearerToken = loginAsAdmin()
+        val bearerToken = adminHeaders()
 
         val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
 
@@ -105,14 +105,13 @@ class OrderListingIntegrationTest : IntegrationTest() {
     ): Order {
         val customer = get<br.com.soat.customer.CustomerRepository>().findById(customerId)!!
         val vehicle = get<br.com.soat.vehicle.VehicleRepository>().findById(vehicleId)!!
-        val attendant = get<br.com.soat.user.UserRepository>().findById(attendantId)!!
 
         val order = Order(
             createdAt = createdAt,
             modifiedAt = createdAt,
             customer = customer,
             vehicle = vehicle,
-            attendant = attendant,
+            attendantId = attendantId,
             description = "Order in status $status",
             status = status,
             technician = if (status != Order.Status.RECEIVED) "Tech" else null

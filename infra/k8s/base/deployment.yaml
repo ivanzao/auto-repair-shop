@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auto-repair-shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auto-repair-shop
+  template:
+    metadata:
+      labels:
+        app: auto-repair-shop
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+    spec:
+      serviceAccountName: auto-repair-shop
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: auto-repair-shop
+          image: ghcr.io/ivanzao/auto-repair-shop:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: auto-repair-shop-config
+            - secretRef:
+                name: auto-repair-shop-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi

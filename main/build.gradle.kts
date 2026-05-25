@@ -29,8 +29,7 @@ dependencies {
     implementation(project(":api"))
     implementation(project(":storage"))
     implementation(project(":worker"))
-    implementation(project(":jwt"))
-    implementation(project(":email"))
+    implementation(project(":metric"))
 
     implementation(libs.kotlinx.coroutines.core)
 
@@ -38,9 +37,11 @@ dependencies {
     implementation(libs.koin.core)
 
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.datatype.jsr310)
     implementation(libs.jackson.dataformat.yaml)
 
     implementation(libs.slf4j.api)
+    implementation(libs.micrometer.registry.prometheus)
     runtimeOnly(libs.logback.classic)
 
     testImplementation(platform(libs.junit.bom))
@@ -48,6 +49,9 @@ dependencies {
     testImplementation(libs.jackson.module.kotlin)
     testImplementation(libs.jackson.databind)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.localstack)
+    testImplementation(libs.aws.sdk.kotlin.sqs)
+    testImplementation(libs.aws.sdk.kotlin.sns)
     testImplementation(libs.jackson.datatype.jsr310)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.exposed.core)

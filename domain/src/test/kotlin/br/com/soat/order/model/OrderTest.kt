@@ -8,7 +8,6 @@ import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.PhoneNumber
 import br.com.soat.shared.vo.VehiclePlate
 import br.com.soat.supply.model.SupplyRequirement
-import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -36,19 +35,12 @@ class OrderTest {
         year = 2024
     )
 
-    private val attendant = User(
-        name = "Jane Attendant",
-        hashedPassword = "hashedPassword",
-        document = Document("98765432100"),
-        email = Email("jane@example.com"),
-        contact = PhoneNumber("11988888888"),
-        role = User.Role.ATTENDANT
-    )
+    private val attendantId = UUID.randomUUID()
 
     private fun createOrder(status: Order.Status = Order.Status.RECEIVED) = Order(
         customer = customer,
         vehicle = vehicle,
-        attendant = attendant,
+        attendantId = attendantId,
         description = "Test order",
         status = status
     )

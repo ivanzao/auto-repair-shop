@@ -13,12 +13,9 @@ database:
   maximumPoolSize: 6
 
 security:
-  jwt:
-    secret: a8f5e2c9b4d7e1f3a6c8b2d5e7f9a1c3b5d7e9f1a3c5e7b9d1f3a5c7e9b1d3f5
   hash:
     cost: 10  # BCrypt cost factor (10-12 recommended for production)
-  authentication:
-    expiresIn: 60  # Token expiration time in minutes
 
-mailersend:
-  token: "mlsn.ef6a99eacf439ca5978bcd28822e29f7f663053fafe47f66ed6995923d51b6bd"
+sns:
+  topic:
+    arn: "arn:aws:sns:us-east-1:000000000000:auto-repair-shop-events"

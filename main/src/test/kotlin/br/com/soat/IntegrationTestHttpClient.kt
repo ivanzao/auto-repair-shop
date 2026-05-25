@@ -1,8 +1,5 @@
 package br.com.soat
 
-import br.com.soat.auth.dto.AuthenticateUserRequestDTO
-import br.com.soat.auth.dto.AuthenticateUserResponseDTO
-import br.com.soat.auth.dto.RefreshTokenRequestDTO
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
 import br.com.soat.customer.dto.CustomerResponseDTO
 import br.com.soat.order.dto.CreateOrderRequestDTO
@@ -16,10 +13,9 @@ import br.com.soat.service.dto.CreateServiceRequestDTO
 import br.com.soat.service.dto.ServiceResponseDTO
 import br.com.soat.supply.dto.CreateSupplyRequestDTO
 import br.com.soat.supply.dto.SupplyResponseDTO
-import br.com.soat.user.dto.CreateUserRequestDTO
-import br.com.soat.user.dto.UpdateUserRequestDTO
-import br.com.soat.user.dto.UserResponseDTO
-import br.com.soat.user.model.User
+import br.com.soat.attendant.dto.AttendantResponseDTO
+import br.com.soat.attendant.dto.CreateAttendantRequestDTO
+import br.com.soat.attendant.dto.UpdateAttendantRequestDTO
 import br.com.soat.vehicle.dto.CreateVehicleRequestDTO
 import br.com.soat.vehicle.dto.VehicleResponseDTO
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -46,18 +42,18 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
 
     // ==================== ORDER ====================
 
-    fun listOrders(bearerToken: String, page: Int = 1): HttpResponse<String> {
-        return get("/v1/orders?page=$page", bearerToken)
+    fun listOrders(authHeaders: Map<String, String>, page: Int = 1): HttpResponse<String> {
+        return get("/v1/orders?page=$page", authHeaders)
     }
 
-    fun getOrder(orderId: String, bearerToken: String): HttpResponse<OrderResponseDTO> {
-        val response = get("/v1/orders/$orderId", bearerToken)
+    fun getOrder(orderId: String, authHeaders: Map<String, String>): HttpResponse<OrderResponseDTO> {
+        val response = get("/v1/orders/$orderId", authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun createOrder(dto: CreateOrderRequestDTO, bearerToken: String): HttpResponse<OrderResponseDTO> {
+    fun createOrder(dto: CreateOrderRequestDTO, authHeaders: Map<String, String>): HttpResponse<OrderResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/orders", body, bearerToken)
+        val response = post("/v1/orders", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
@@ -69,30 +65,30 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
     fun startDiagnosis(
         orderId: String,
         dto: StartOrderDiagnosisRequestDTO,
-        bearerToken: String
+        authHeaders: Map<String, String>
     ): HttpResponse<OrderResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/orders/$orderId/start-diagnosis", body, bearerToken)
+        val response = post("/v1/orders/$orderId/start-diagnosis", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
     fun finishDiagnosis(
         orderId: String,
         dto: FinishOrderDiagnosisRequestDTO,
-        bearerToken: String
+        authHeaders: Map<String, String>
     ): HttpResponse<OrderResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/orders/$orderId/finish-diagnosis", body, bearerToken)
+        val response = post("/v1/orders/$orderId/finish-diagnosis", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
     fun scheduleDelivery(
         orderId: String,
         dto: OrderScheduleVehicleRequestDTO,
-        bearerToken: String
+        authHeaders: Map<String, String>
     ): HttpResponse<*> {
         val body = mapper.writeValueAsString(dto)
-        return post("/v1/orders/$orderId/schedule-delivery", body, bearerToken)
+        return post("/v1/orders/$orderId/schedule-delivery", body, authHeaders)
     }
 
     fun approveOrder(token: String): HttpResponse<*> {
@@ -103,190 +99,172 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return get("/v1/orders/quote/decline?token=$token")
     }
 
-    fun completeOrder(orderId: String, bearerToken: String): HttpResponse<OrderResponseDTO> {
-        val response = post("/v1/orders/$orderId/complete", "{}", bearerToken)
+    fun completeOrder(orderId: String, authHeaders: Map<String, String>): HttpResponse<OrderResponseDTO> {
+        val response = post("/v1/orders/$orderId/complete", "{}", authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun deliverOrder(orderId: String, bearerToken: String): HttpResponse<OrderResponseDTO> {
-        val response = post("/v1/orders/$orderId/deliver", "{}", bearerToken)
+    fun deliverOrder(orderId: String, authHeaders: Map<String, String>): HttpResponse<OrderResponseDTO> {
+        val response = post("/v1/orders/$orderId/deliver", "{}", authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun getOrderMetrics(bearerToken: String): HttpResponse<OrderMetricsResponseDTO> {
-        val response = get("/v1/orders/metrics", bearerToken)
+    fun getOrderMetrics(authHeaders: Map<String, String>): HttpResponse<OrderMetricsResponseDTO> {
+        val response = get("/v1/orders/metrics", authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    // ==================== AUTHENTICATION ====================
+    // ==================== ATTENDANT ====================
 
-    fun login(dto: AuthenticateUserRequestDTO): HttpResponse<AuthenticateUserResponseDTO> {
+    fun createAttendant(dto: CreateAttendantRequestDTO, authHeaders: Map<String, String>): HttpResponse<AttendantResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/login", body)
+        val response = post("/v1/attendants", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun refreshToken(dto: RefreshTokenRequestDTO): HttpResponse<AuthenticateUserResponseDTO> {
+    fun getAttendant(attendantId: String, authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/attendants/$attendantId", authHeaders)
+    }
+
+    fun getAllAttendants(authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/attendants", authHeaders)
+    }
+
+    fun updateAttendant(attendantId: String, dto: UpdateAttendantRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/refresh", body)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
+        return put("/v1/attendants/$attendantId", body, authHeaders)
     }
 
-    // ==================== USER ====================
-
-    fun createUser(dto: CreateUserRequestDTO, bearerToken: String): HttpResponse<UserResponseDTO> {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/users", body, bearerToken)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
-    }
-
-    fun getUser(userId: String, bearerToken: String): HttpResponse<String> {
-        return get("/v1/users/$userId", bearerToken)
-    }
-
-    fun getAllUsers(bearerToken: String): HttpResponse<String> {
-        return get("/v1/users", bearerToken)
-    }
-
-    fun updateUser(userId: String, dto: UpdateUserRequestDTO, bearerToken: String): HttpResponse<String> {
-        val body = mapper.writeValueAsString(dto)
-        return put("/v1/users/$userId", body, bearerToken)
-    }
-
-    fun deleteUser(userId: String, bearerToken: String): HttpResponse<String> {
-        return delete("/v1/users/$userId", bearerToken)
+    fun deleteAttendant(attendantId: String, authHeaders: Map<String, String>): HttpResponse<String> {
+        return delete("/v1/attendants/$attendantId", authHeaders)
     }
 
     // ==================== CUSTOMER ====================
 
-    fun createCustomer(dto: CreateCustomerRequestDTO, bearerToken: String): HttpResponse<CustomerResponseDTO> {
+    fun createCustomer(dto: CreateCustomerRequestDTO, authHeaders: Map<String, String>): HttpResponse<CustomerResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/customers", body, bearerToken)
+        val response = post("/v1/customers", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun getCustomer(customerId: String, bearerToken: String): HttpResponse<String> {
-        return get("/v1/customers/$customerId", bearerToken)
+    fun getCustomer(customerId: String, authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/customers/$customerId", authHeaders)
     }
 
-    fun updateCustomer(customerId: String, dto: CreateCustomerRequestDTO, bearerToken: String): HttpResponse<String> {
+    fun updateCustomer(customerId: String, dto: CreateCustomerRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
         val body = mapper.writeValueAsString(dto)
-        return put("/v1/customers/$customerId", body, bearerToken)
+        return put("/v1/customers/$customerId", body, authHeaders)
     }
 
-    fun deleteCustomer(customerId: String, bearerToken: String): HttpResponse<String> {
-        return delete("/v1/customers/$customerId", bearerToken)
+    fun deleteCustomer(customerId: String, authHeaders: Map<String, String>): HttpResponse<String> {
+        return delete("/v1/customers/$customerId", authHeaders)
     }
 
     // ==================== VEHICLE ====================
 
-    fun createVehicle(dto: CreateVehicleRequestDTO, bearerToken: String): HttpResponse<VehicleResponseDTO> {
+    fun createVehicle(dto: CreateVehicleRequestDTO, authHeaders: Map<String, String>): HttpResponse<VehicleResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/vehicles", body, bearerToken)
+        val response = post("/v1/vehicles", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun getVehicle(vehicleId: String, bearerToken: String): HttpResponse<String> {
-        return get("/v1/vehicles/$vehicleId", bearerToken)
+    fun getVehicle(vehicleId: String, authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/vehicles/$vehicleId", authHeaders)
     }
 
-    fun updateVehicle(vehicleId: String, dto: CreateVehicleRequestDTO, bearerToken: String): HttpResponse<String> {
+    fun updateVehicle(vehicleId: String, dto: CreateVehicleRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
         val body = mapper.writeValueAsString(dto)
-        return put("/v1/vehicles/$vehicleId", body, bearerToken)
+        return put("/v1/vehicles/$vehicleId", body, authHeaders)
     }
 
-    fun deleteVehicle(vehicleId: String, bearerToken: String): HttpResponse<String> {
-        return delete("/v1/vehicles/$vehicleId", bearerToken)
+    fun deleteVehicle(vehicleId: String, authHeaders: Map<String, String>): HttpResponse<String> {
+        return delete("/v1/vehicles/$vehicleId", authHeaders)
     }
 
     // ==================== SUPPLY ====================
 
-    fun createSupply(dto: CreateSupplyRequestDTO, bearerToken: String): HttpResponse<SupplyResponseDTO> {
+    fun createSupply(dto: CreateSupplyRequestDTO, authHeaders: Map<String, String>): HttpResponse<SupplyResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/supplies", body, bearerToken)
+        val response = post("/v1/supplies", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun getSupply(supplyId: UUID, bearerToken: String): HttpResponse<String> {
-        return get("/v1/supplies/$supplyId", bearerToken)
+    fun getSupply(supplyId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/supplies/$supplyId", authHeaders)
     }
 
-    fun updateSupply(supplyId: UUID, dto: CreateSupplyRequestDTO, bearerToken: String): HttpResponse<String> {
+    fun updateSupply(supplyId: UUID, dto: CreateSupplyRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
         val body = mapper.writeValueAsString(dto)
-        return put("/v1/supplies/$supplyId", body, bearerToken)
+        return put("/v1/supplies/$supplyId", body, authHeaders)
     }
 
-    fun deleteSupply(supplyId: UUID, bearerToken: String): HttpResponse<String> {
-        return delete("/v1/supplies/$supplyId", bearerToken)
+    fun deleteSupply(supplyId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
+        return delete("/v1/supplies/$supplyId", authHeaders)
     }
 
     // ==================== SERVICE ====================
 
-    fun createService(dto: CreateServiceRequestDTO, bearerToken: String): HttpResponse<ServiceResponseDTO> {
+    fun createService(dto: CreateServiceRequestDTO, authHeaders: Map<String, String>): HttpResponse<ServiceResponseDTO> {
         val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/services", body, bearerToken)
+        val response = post("/v1/services", body, authHeaders)
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun getService(serviceId: UUID, bearerToken: String): HttpResponse<String> {
-        return get("/v1/services/$serviceId", bearerToken)
+    fun getService(serviceId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/services/$serviceId", authHeaders)
     }
 
-    fun getAllServices(bearerToken: String): HttpResponse<String> {
-        return get("/v1/services", bearerToken)
+    fun getAllServices(authHeaders: Map<String, String>): HttpResponse<String> {
+        return get("/v1/services", authHeaders)
     }
 
-    fun updateService(serviceId: UUID, dto: CreateServiceRequestDTO, bearerToken: String): HttpResponse<String> {
+    fun updateService(serviceId: UUID, dto: CreateServiceRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
         val body = mapper.writeValueAsString(dto)
-        return put("/v1/services/$serviceId", body, bearerToken)
+        return put("/v1/services/$serviceId", body, authHeaders)
     }
 
-    fun deleteService(serviceId: UUID, bearerToken: String): HttpResponse<String> {
-        return delete("/v1/services/$serviceId", bearerToken)
+    fun deleteService(serviceId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
+        return delete("/v1/services/$serviceId", authHeaders)
     }
 
     // ==================== HTTP METHODS ====================
 
-    private fun post(path: String, body: String, bearerToken: String? = null): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
+    private fun post(path: String, body: String, authHeaders: Map<String, String> = emptyMap()): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:$serverPort$path"))
             .header("Content-Type", "application/json")
-            .apply { bearerToken?.let { header("Authorization", "Bearer $bearerToken") } }
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build()
+        authHeaders.forEach { (k, v) -> builder.header(k, v) }
+        val request = builder.POST(HttpRequest.BodyPublishers.ofString(body)).build()
 
         return client.send(request, HttpResponse.BodyHandlers.ofString())
     }
 
-    private fun get(path: String, bearerToken: String? = null): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
+    private fun get(path: String, authHeaders: Map<String, String> = emptyMap()): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:$serverPort$path"))
             .header("Content-Type", "application/json")
-            .apply { bearerToken?.let { header("Authorization", "Bearer $bearerToken") } }
-            .GET()
-            .build()
+        authHeaders.forEach { (k, v) -> builder.header(k, v) }
+        val request = builder.GET().build()
 
         return client.send(request, HttpResponse.BodyHandlers.ofString())
     }
 
-    private fun put(path: String, body: String, bearerToken: String? = null): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
+    private fun put(path: String, body: String, authHeaders: Map<String, String> = emptyMap()): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:$serverPort$path"))
             .header("Content-Type", "application/json")
-            .apply { bearerToken?.let { header("Authorization", "Bearer $bearerToken") } }
-            .PUT(HttpRequest.BodyPublishers.ofString(body))
-            .build()
+        authHeaders.forEach { (k, v) -> builder.header(k, v) }
+        val request = builder.PUT(HttpRequest.BodyPublishers.ofString(body)).build()
 
         return client.send(request, HttpResponse.BodyHandlers.ofString())
     }
 
-    private fun delete(path: String, bearerToken: String? = null): HttpResponse<String> {
-        val request = HttpRequest.newBuilder()
+    private fun delete(path: String, authHeaders: Map<String, String> = emptyMap()): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:$serverPort$path"))
             .header("Content-Type", "application/json")
-            .apply { bearerToken?.let { header("Authorization", "Bearer $bearerToken") } }
-            .DELETE()
-            .build()
+        authHeaders.forEach { (k, v) -> builder.header(k, v) }
+        val request = builder.DELETE().build()
 
         return client.send(request, HttpResponse.BodyHandlers.ofString())
     }

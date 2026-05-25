@@ -9,10 +9,12 @@ import br.com.soat.order.dto.OrderStatusResponseDTO
 import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
 import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
 import br.com.soat.order.model.request.StartOrderDiagnosisRequest
+import br.com.soat.auth.JwtUserPrincipal
 import br.com.soat.shared.dto.PageResponseDTO
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.post
@@ -67,8 +69,9 @@ fun Application.orderRoutes(koin: Koin) {
                 }
 
                 post("/orders") {
+                    val principal = call.principal<JwtUserPrincipal>()!!
                     val request = call.receive<CreateOrderRequestDTO>()
-                    val createdOrder = orderUseCase.create(request.toModel())
+                    val createdOrder = orderUseCase.create(request.toModel(attendantId = principal.userId))
 
                     call.respond(
                         status = HttpStatusCode.Created,

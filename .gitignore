@@ -54,5 +54,8 @@ bin/
 ### Load Test Results ###
 infra/load-test/results-*/
 
+### Runtime-generated kustomize patches ###
+infra/k8s/overlays/*/tgb-patch.yaml
+
 ### IntelliJ IDEA ###
 .idea/

@@ -26,18 +26,18 @@ import br.com.soat.service.model.Service
 import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.model.Page
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.user.UserRepository
-import br.com.soat.user.exception.UserNotFoundException
-import br.com.soat.user.model.User
+import br.com.soat.attendant.AttendantRepository
+import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.vehicle.VehicleRepository
 import br.com.soat.vehicle.exception.VehicleNotFoundException
+import br.com.soat.metric.MetricsPort
 import java.util.UUID
 import java.util.UUID.randomUUID
 
 class OrderUseCase(
     private val customerRepository: CustomerRepository,
     private val vehicleRepository: VehicleRepository,
-    private val userRepository: UserRepository,
+    private val attendantRepository: AttendantRepository,
     private val orderRepository: OrderRepository,
     private val serviceRepository: ServiceRepository,
     private val eventRepository: EventRepository,
@@ -45,8 +45,14 @@ class OrderUseCase(
     private val orderApprovalTokenRepository: OrderApprovalTokenRepository,
     private val orderExecutionMetricRepository: OrderExecutionMetricRepository,
     private val eventPublisher: EventPublisher,
-    private val tx: RepositoryTransactionHandler
+    private val tx: RepositoryTransactionHandler,
+    metrics: MetricsPort,
 ) {
+
+    private val ordersCreated: MetricsPort.Counter = metrics.counter(
+        name = "orders_created_total",
+        description = "Total de ordens de serviço criadas",
+    )
 
     fun findById(orderId: UUID) = orderRepository.findById(orderId)
     fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
@@ -59,9 +65,8 @@ class OrderUseCase(
         val vehicle = vehicleRepository.findById(request.vehicleId)
             ?: throw VehicleNotFoundException(request.vehicleId)
 
-        val attendant = userRepository.findById(request.attendantId)
-            ?.takeIf { it.role == User.Role.ATTENDANT }
-            ?: throw UserNotFoundException(request.attendantId)
+        val attendant = attendantRepository.findById(request.attendantId)
+            ?: throw AttendantNotFoundException(request.attendantId)
 
         val services = serviceRepository.findAllByIds(request.servicesIds)
         validateRequestedServicesExists(services, request.servicesIds)
@@ -69,12 +74,14 @@ class OrderUseCase(
         val order = Order(
             customer = customer,
             vehicle = vehicle,
-            attendant = attendant,
+            attendantId = attendant.id,
             description = request.description,
         ).addServices(services)
             .addSupplyRequirements(request.extraSupplyRequirements)
 
-        return orderRepository.create(order)
+        val created = orderRepository.create(order)
+        ordersCreated.increment()
+        return created
     }
 
     fun scheduleVehicleDelivery(request: ScheduleOrderVehicleRequest) {

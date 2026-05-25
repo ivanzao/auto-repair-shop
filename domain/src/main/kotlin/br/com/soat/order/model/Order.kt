@@ -4,7 +4,6 @@ import br.com.soat.customer.model.Customer
 import br.com.soat.order.exception.IllegalOrderStateException
 import br.com.soat.service.model.Service
 import br.com.soat.supply.model.SupplyRequirement
-import br.com.soat.user.model.User
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
 import java.time.LocalDateTime.now
@@ -21,7 +20,7 @@ data class Order(
 
     val customer: Customer,
     val vehicle: Vehicle,
-    val attendant: User,
+    val attendantId: UUID,
     val services: List<Service> = emptyList(),
     val extraSupplies: List<SupplyRequirement> = emptyList(),
 

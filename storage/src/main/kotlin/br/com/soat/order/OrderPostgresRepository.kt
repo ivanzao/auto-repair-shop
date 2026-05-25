@@ -7,7 +7,6 @@ import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.service.Services
 import br.com.soat.shared.model.Page
 import br.com.soat.supply.model.SupplyRequirement
-import br.com.soat.user.Users
 import br.com.soat.vehicle.Vehicles
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -49,7 +48,6 @@ class OrderPostgresRepository(
         val orderRows = Orders
             .join(Customers, JoinType.INNER, Orders.customerId, Customers.id)
             .join(Vehicles, JoinType.INNER, Orders.vehicleId, Vehicles.id)
-            .join(Users, JoinType.INNER, Orders.attendantId, Users.id)
             .selectAll()
             .where { Orders.status notInList excludedStatuses }
             .orderBy(statusPriority to SortOrder.ASC, Orders.createdAt to SortOrder.ASC)
@@ -92,7 +90,6 @@ class OrderPostgresRepository(
         val orderRow = Orders
             .join(Customers, JoinType.INNER, Orders.customerId, Customers.id)
             .join(Vehicles, JoinType.INNER, Orders.vehicleId, Vehicles.id)
-            .join(Users, JoinType.INNER, Orders.attendantId, Users.id)
             .selectAll()
             .where { Orders.id eq id }
             .singleOrNull() ?: return@transaction null
@@ -120,7 +117,7 @@ class OrderPostgresRepository(
             it[Orders.version] = order.version
             it[Orders.customerId] = order.customer.id
             it[Orders.vehicleId] = order.vehicle.id
-            it[Orders.attendantId] = order.attendant.id
+            it[Orders.attendantId] = order.attendantId
             it[Orders.status] = order.status.name
             it[Orders.description] = order.description
             it[Orders.technician] = order.technician

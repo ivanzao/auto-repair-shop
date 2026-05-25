@@ -2,6 +2,7 @@ package br.com.soat
 
 import br.com.soat.config.configureAuthentication
 import br.com.soat.config.configureErrorHandling
+import br.com.soat.config.configureObservability
 import br.com.soat.config.configureRouting
 import br.com.soat.config.configureSerialization
 import io.ktor.server.application.Application
@@ -10,6 +11,7 @@ import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import org.koin.core.Koin
 
 class KtorHttpServer(
@@ -24,7 +26,8 @@ class KtorHttpServer(
 
     init {
         server = embeddedServer(Netty, port = port) {
-            configureAuthentication(koin)
+            configureObservability(koin.get<PrometheusMeterRegistry>())
+            configureAuthentication()
             configureRouting(koin)
             configureSerialization()
             configureLogging()

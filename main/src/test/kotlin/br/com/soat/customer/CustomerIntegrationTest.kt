@@ -1,11 +1,7 @@
 package br.com.soat.customer
 
 import br.com.soat.IntegrationTest
-import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
-import br.com.soat.user.createUser
-import br.com.soat.user.model.User
-import java.time.LocalDateTime
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -14,12 +10,10 @@ import org.junit.jupiter.api.Test
 class CustomerIntegrationTest : IntegrationTest() {
 
     private val customerRepository: CustomerRepository by lazy { get<CustomerRepository>() }
-    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
 
     @Test
     fun `should get customer by id`() {
-        val user = createUser(role = User.Role.ATTENDANT)
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val authHeaders = attendantHeaders()
 
         val createRequestDto = CreateCustomerRequestDTO(
             name = "Fulano",
@@ -28,11 +22,11 @@ class CustomerIntegrationTest : IntegrationTest() {
             contact = "11999999999"
         )
 
-        val createResponse = http.createCustomer(createRequestDto, bearerToken)
+        val createResponse = http.createCustomer(createRequestDto, authHeaders)
         assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val customerId = createResponse.body().id
-        val getResponse = http.getCustomer(customerId, bearerToken)
+        val getResponse = http.getCustomer(customerId, authHeaders)
         assertEquals(200, getResponse.statusCode(), "HTTP status code must be 200 OK")
 
         val fetchedCustomer = customerRepository.findById(UUID.fromString(customerId))!!
@@ -44,8 +38,7 @@ class CustomerIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should create customer successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val authHeaders = adminHeaders()
 
         val requestDto = CreateCustomerRequestDTO(
             name = "Beltrano",
@@ -54,7 +47,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             contact = "11988888888"
         )
 
-        val createCustomerResponse = http.createCustomer(requestDto, bearerToken)
+        val createCustomerResponse = http.createCustomer(requestDto, authHeaders)
         assertEquals(201, createCustomerResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val createdCustomer = customerRepository.findById(UUID.fromString(createCustomerResponse.body().id))!!
@@ -66,8 +59,7 @@ class CustomerIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should update customer`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val authHeaders = adminHeaders()
 
         val createRequestDto = CreateCustomerRequestDTO(
             name = "Ciclano",
@@ -76,7 +68,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             contact = "11 97777-7777"
         )
 
-        val createResponse = http.createCustomer(createRequestDto, bearerToken)
+        val createResponse = http.createCustomer(createRequestDto, authHeaders)
         assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val customerId = createResponse.body().id
@@ -87,7 +79,7 @@ class CustomerIntegrationTest : IntegrationTest() {
             contact = "11977777777"
         )
 
-        val updateResponse = http.updateCustomer(customerId, updateRequestDto, bearerToken)
+        val updateResponse = http.updateCustomer(customerId, updateRequestDto, authHeaders)
         assertEquals(200, updateResponse.statusCode(), "HTTP status code must be 200 OK")
 
         val updatedCustomer = customerRepository.findById(UUID.fromString(customerId))!!
@@ -99,8 +91,7 @@ class CustomerIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should delete customer`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val authHeaders = adminHeaders()
 
         val createRequestDto = CreateCustomerRequestDTO(
             name = "To Delete",
@@ -109,14 +100,14 @@ class CustomerIntegrationTest : IntegrationTest() {
             contact = "11 90000-0000"
         )
 
-        val createResponse = http.createCustomer(createRequestDto, bearerToken)
+        val createResponse = http.createCustomer(createRequestDto, authHeaders)
         assertEquals(201, createResponse.statusCode(), "HTTP status code must be 201 Created")
 
         val customerId = createResponse.body().id
-        val deleteResponse = http.deleteCustomer(customerId, bearerToken)
+        val deleteResponse = http.deleteCustomer(customerId, authHeaders)
         assertEquals(204, deleteResponse.statusCode(), "HTTP status code must be 204 No Content")
 
-        val getResponse = http.getCustomer(customerId, bearerToken)
+        val getResponse = http.getCustomer(customerId, authHeaders)
         assertEquals(404, getResponse.statusCode(), "HTTP status code must be 404 Not Found")
 
         val deletedCustomer = customerRepository.findById(UUID.fromString(customerId))

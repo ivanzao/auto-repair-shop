@@ -1,12 +1,9 @@
 package br.com.soat.service
 
 import br.com.soat.IntegrationTest
-import br.com.soat.auth.port.AuthenticationTokenProvider
 import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.service.dto.CreateServiceRequestDTO
-import br.com.soat.user.createUser
 import java.math.BigDecimal
-import java.time.LocalDateTime
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -14,12 +11,10 @@ import org.junit.jupiter.api.Test
 class ServiceIntegrationTest : IntegrationTest() {
 
     private val serviceRepository: ServiceRepository by lazy { get<ServiceRepository>() }
-    private val tokenProvider: AuthenticationTokenProvider by lazy { get<AuthenticationTokenProvider>() }
 
     @Test
     fun `should get service by id`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val createRequestDto = CreateServiceRequestDTO(
             name = "Alinhamento",
@@ -43,8 +38,7 @@ class ServiceIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should get all services`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val service1 = CreateServiceRequestDTO(
             name = "Balanceamento",
@@ -72,8 +66,7 @@ class ServiceIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should return 404 when getting non-existent service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val nonExistentId = java.util.UUID.randomUUID()
         val getResponse = http.getService(nonExistentId, bearerToken)
@@ -82,8 +75,7 @@ class ServiceIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should create service successfully`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val requestDto = CreateServiceRequestDTO(
             name = "Troca de óleo",
@@ -103,8 +95,7 @@ class ServiceIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should update service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val createRequestDto = CreateServiceRequestDTO(
             name = "Troca de pneus",
@@ -135,8 +126,7 @@ class ServiceIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should return 404 when updating non-existent service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val nonExistentId = java.util.UUID.randomUUID()
         val updateRequestDto = CreateServiceRequestDTO(
@@ -152,8 +142,7 @@ class ServiceIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should delete service`() {
-        val user = createUser()
-        val bearerToken = tokenProvider.generate(user, LocalDateTime.now().plusDays(1))
+        val bearerToken = adminHeaders()
 
         val createRequestDto = CreateServiceRequestDTO(
             name = "To Delete",
