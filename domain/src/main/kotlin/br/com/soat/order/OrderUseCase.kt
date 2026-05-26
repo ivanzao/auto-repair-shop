@@ -31,8 +31,12 @@ import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.vehicle.VehicleRepository
 import br.com.soat.vehicle.exception.VehicleNotFoundException
 import br.com.soat.metric.MetricsPort
+import java.time.Duration
+import java.time.LocalDateTime
 import java.util.UUID
 import java.util.UUID.randomUUID
+import net.logstash.logback.argument.StructuredArguments.kv
+import org.slf4j.LoggerFactory
 
 class OrderUseCase(
     private val customerRepository: CustomerRepository,
@@ -49,10 +53,21 @@ class OrderUseCase(
     metrics: MetricsPort,
 ) {
 
+    private val logger = LoggerFactory.getLogger(OrderUseCase::class.java)
+
     private val ordersCreated: MetricsPort.Counter = metrics.counter(
         name = "orders_created_total",
         description = "Total de ordens de serviço criadas",
     )
+
+    private val ordersByStatus: Map<Order.Status, MetricsPort.Counter> =
+        Order.Status.entries.associateWith { status ->
+            metrics.counter(
+                name = "orders_by_status_total",
+                description = "Total de transições de ordens de serviço para cada status",
+                tags = mapOf("status" to status.name),
+            )
+        }
 
     fun findById(orderId: UUID) = orderRepository.findById(orderId)
     fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
@@ -81,6 +96,16 @@ class OrderUseCase(
 
         val created = orderRepository.create(order)
         ordersCreated.increment()
+        ordersByStatus[created.status]?.increment()
+        logger.info(
+            "Order created",
+            kv("event", "order.created"),
+            kv("orderId", created.id),
+            kv("customerId", customer.id),
+            kv("vehicleId", vehicle.id),
+            kv("attendantId", attendant.id),
+            kv("to_status", created.status.name),
+        )
         return created
     }
 
@@ -120,7 +145,20 @@ class OrderUseCase(
         val order = orderRepository.findById(request.orderId)
             ?: throw OrderNotFoundException(request.orderId)
 
-        return orderRepository.update(order.inDiagnosis(request.technician))
+        val previousStatus = order.status
+        val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
+        val updated = orderRepository.update(order.inDiagnosis(request.technician))
+        ordersByStatus[updated.status]?.increment()
+        logger.info(
+            "Order diagnosis started",
+            kv("event", "order.status_changed"),
+            kv("orderId", updated.id),
+            kv("from_status", previousStatus.name),
+            kv("to_status", updated.status.name),
+            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+            kv("technician", request.technician),
+        )
+        return updated
     }
 
     fun finishDiagnosis(request: FinishOrderDiagnosisRequest): Order {
@@ -133,33 +171,67 @@ class OrderUseCase(
             .addServices(services)
             .addSupplyRequirements(request.extraSupplyRequirements)
 
+        val previousStatus = order.status
+        val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
         val (updatedOrder, event) = tx.inTransaction {
-            val order = orderRepository.update(orderWithServices)
-            val event = eventRepository.save(OrderDiagnoseFinishedEvent(orderId = order.id))
-            order to event
+            val updated = orderRepository.update(orderWithServices)
+            val savedEvent = eventRepository.save(OrderDiagnoseFinishedEvent(orderId = updated.id))
+            updated to savedEvent
         }
 
         eventPublisher.publish(event)
+        ordersByStatus[updatedOrder.status]?.increment()
+        logger.info(
+            "Order diagnosis finished",
+            kv("event", "order.status_changed"),
+            kv("orderId", updatedOrder.id),
+            kv("from_status", previousStatus.name),
+            kv("to_status", updatedOrder.status.name),
+            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+        )
 
         return updatedOrder
     }
 
     fun complete(orderId: UUID): Order {
         val order = orderRepository.findById(orderId) ?: throw IllegalArgumentException("Order not found $orderId")
+        val previousStatus = order.status
+        val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
         val (savedOrder, event) = tx.inTransaction {
-            val order = orderRepository.update(order.completed())
-            val event = eventRepository.save(OrderCompletedEvent(orderId = order.id))
-            order to event
+            val updated = orderRepository.update(order.completed())
+            val savedEvent = eventRepository.save(OrderCompletedEvent(orderId = updated.id))
+            updated to savedEvent
         }
 
         eventPublisher.publish(event)
+        ordersByStatus[savedOrder.status]?.increment()
+        logger.info(
+            "Order completed",
+            kv("event", "order.status_changed"),
+            kv("orderId", savedOrder.id),
+            kv("from_status", previousStatus.name),
+            kv("to_status", savedOrder.status.name),
+            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+        )
 
         return savedOrder
     }
 
     fun deliver(orderId: UUID): Order {
         val order = orderRepository.findById(orderId) ?: throw OrderNotFoundException(orderId)
-        return orderRepository.update(order.delivered())
+        val previousStatus = order.status
+        val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
+        val delivered = orderRepository.update(order.delivered())
+        ordersByStatus[delivered.status]?.increment()
+        logger.info(
+            "Order delivered",
+            kv("event", "order.status_changed"),
+            kv("orderId", delivered.id),
+            kv("from_status", previousStatus.name),
+            kv("to_status", delivered.status.name),
+            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+        )
+        return delivered
     }
 
     fun approveQuote(approvalTokenId: UUID) {
@@ -169,6 +241,8 @@ class OrderUseCase(
         val order = orderRepository.findById(approvalToken.orderId)
             ?: throw OrderNotFoundException(approvalToken.orderId)
 
+        val previousStatus = order.status
+        val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
         val event = tx.inTransaction {
             orderApprovalTokenRepository.update(approvalToken.markAsUsed())
             orderRepository.update(order.inProgress())
@@ -176,6 +250,15 @@ class OrderUseCase(
         }
 
         eventPublisher.publish(event)
+        ordersByStatus[Order.Status.IN_PROGRESS]?.increment()
+        logger.info(
+            "Order quote approved",
+            kv("event", "order.status_changed"),
+            kv("orderId", order.id),
+            kv("from_status", previousStatus.name),
+            kv("to_status", Order.Status.IN_PROGRESS.name),
+            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+        )
     }
 
     fun declineQuote(approvalTokenId: UUID) {
@@ -185,10 +268,21 @@ class OrderUseCase(
         val order = orderRepository.findById(approvalToken.orderId)
             ?: throw OrderNotFoundException(approvalToken.orderId)
 
+        val previousStatus = order.status
+        val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
         tx.inTransaction {
             orderRepository.update(order.canceled())
             orderApprovalTokenRepository.update(approvalToken.markAsUsed())
         }
+        ordersByStatus[Order.Status.CANCELED]?.increment()
+        logger.info(
+            "Order quote declined",
+            kv("event", "order.status_changed"),
+            kv("orderId", order.id),
+            kv("from_status", previousStatus.name),
+            kv("to_status", Order.Status.CANCELED.name),
+            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+        )
     }
 
     private fun findValidApprovalToken(approvalTokenId: UUID) =

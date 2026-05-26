@@ -23,8 +23,13 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.request.httpMethod
+import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import kotlin.text.ifEmpty
+import org.slf4j.LoggerFactory
+
+private val logger = LoggerFactory.getLogger("br.com.soat.config.ErrorHandling")
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {
@@ -49,6 +54,17 @@ fun Application.configureErrorHandling() {
                     val message = "${cause::class.simpleName}: ${cause.message}"
                     InternalServerError to ErrorResponseDTO.internalServerError(message)
                 }
+            }
+
+            val method = call.request.httpMethod.value
+            val path = call.request.path()
+            if (statusCode == InternalServerError) {
+                logger.error("Unhandled exception method={} path={} status={}", method, path, statusCode.value, cause)
+            } else {
+                logger.warn(
+                    "Request failed method={} path={} status={} exception={} message={}",
+                    method, path, statusCode.value, cause::class.simpleName, cause.message,
+                )
             }
 
             call.respond(statusCode, body)

@@ -12,6 +12,7 @@ class MicrometerMetricsPort(private val registry: MeterRegistry) : MetricsPort {
             .description(description)
             .tags(tags.toMicrometerTags())
             .register(registry)
+
         return MicrometerCounter(counter)
     }
 
@@ -21,6 +22,7 @@ class MicrometerMetricsPort(private val registry: MeterRegistry) : MetricsPort {
             .description(description)
             .tags(tags.toMicrometerTags())
             .register(registry)
+
         return MicrometerTimer(timer)
     }
 

@@ -5,12 +5,9 @@ import br.com.soat.config.configureErrorHandling
 import br.com.soat.config.configureObservability
 import br.com.soat.config.configureRouting
 import br.com.soat.config.configureSerialization
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.calllogging.CallLogging
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import org.koin.core.Koin
 
@@ -30,17 +27,12 @@ class KtorHttpServer(
             configureAuthentication()
             configureRouting(koin)
             configureSerialization()
-            configureLogging()
             configureErrorHandling()
         }
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server?.stop(1000, 2000)
         })
-    }
-
-    private fun Application.configureLogging() {
-        install(CallLogging)
     }
 
     override fun start() {

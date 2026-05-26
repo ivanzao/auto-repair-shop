@@ -32,35 +32,35 @@ data class Order(
         if (status != Status.RECEIVED)
             throw IllegalOrderStateException("Order must be RECEIVED. Current status: $status")
 
-        return copy(status = Status.IN_DIAGNOSIS, technician = technician)
+        return copy(status = Status.IN_DIAGNOSIS, technician = technician, modifiedAt = now())
     }
 
     fun waitingApproval(): Order {
         if (status != Status.IN_DIAGNOSIS)
             throw IllegalOrderStateException("Order must be IN_DIAGNOSIS. Current status: $status")
 
-        return copy(status = Status.WAITING_APPROVAL)
+        return copy(status = Status.WAITING_APPROVAL, modifiedAt = now())
     }
 
     fun inProgress(): Order {
         if (status != Status.WAITING_APPROVAL)
             throw IllegalOrderStateException("Order must be WAITING_APPROVAL. Current status: $status")
 
-        return copy(status = Status.IN_PROGRESS)
+        return copy(status = Status.IN_PROGRESS, modifiedAt = now())
     }
 
     fun completed() : Order {
         if (status != Status.IN_PROGRESS)
             throw IllegalOrderStateException("Order must be IN_PROGRESS. Current status: $status")
 
-        return copy(status = Status.COMPLETED)
+        return copy(status = Status.COMPLETED, modifiedAt = now())
     }
 
     fun delivered() : Order {
         if (status != Status.COMPLETED)
             throw IllegalOrderStateException("Order must be COMPLETED. Current status: $status")
 
-        return copy(status = Status.DELIVERED)
+        return copy(status = Status.DELIVERED, modifiedAt = now())
     }
 
     fun canceled() : Order {
@@ -70,7 +70,7 @@ data class Order(
         if (status == Status.CANCELED)
             throw IllegalOrderStateException("Order already canceled")
 
-        return copy(status = Status.CANCELED)
+        return copy(status = Status.CANCELED, modifiedAt = now())
     }
 
     fun addServices(services: List<Service>) = copy(services = this.services + services)

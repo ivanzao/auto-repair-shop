@@ -172,7 +172,7 @@ jobs:
       - name: Smoke test via API Gateway
         run: |
           for i in $(seq 1 10); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.ssm.outputs.apigw_endpoint }}/v1/health")
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.ssm.outputs.apigw_endpoint }}/health")
             if [ "$CODE" = "200" ]; then
               echo "Smoke test passed (status=200)"
               exit 0
