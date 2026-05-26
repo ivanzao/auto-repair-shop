@@ -19,22 +19,23 @@ Veja o diagrama completo em [04 — ER Model](../diagrams/04-er-model.md). Entid
 
 - **Comerciais**: `customers`, `vehicles`, `services`, `supplies`
 - **Operacionais**: `orders`, `order_services`, `order_supplies`, `service_supplies`, `order_schedules`, `order_execution_metrics`, `order_approval_tokens`
-- **Identidade**: `users` (credencial Lambda login), `attendants` (entidade de domínio), `refresh_tokens`
 - **Mensageria/Outbox**: `events`, `processed_events`, `commands`, `shedlock`
+
+> `users` e `refresh_tokens` pertencem ao **Lambda login** (`auto-repair-shop-lambdas`) — gerenciados por migration própria e não fazem parte deste schema.
 
 ## 3. Decisões de schema
 
 | Decisão | Justificativa |
 |---|---|
 | **UUID como PK em todas as tabelas de domínio** | Desacopla geração da chave da inserção (cliente pode gerar antes do POST). Necessário no outbox: o ID do evento é referenciado antes do commit. |
-| **`version INT` em entidades versionáveis** (`orders`, `users`) | Optimistic locking via Exposed — protege contra updates concorrentes em status transitions sem usar `SELECT ... FOR UPDATE`. |
-| **`document` UNIQUE em `users`, `attendants`, `customers`** | CPF/CNPJ é identidade externa. UNIQUE física no banco impede duplicatas mesmo em race conditions. |
-| **`status VARCHAR` com `CHECK` em vez de `ENUM` SQL** | `ALTER TYPE ADD VALUE` no Postgres é OK em 12+, mas não dá pra remover valor. VARCHAR + CHECK migra mais facilmente — `V13__rename_users_to_attendants.sql` é exemplo do trabalho que ALTER TYPE não suportaria. |
+| **`version INT` em entidades versionáveis** (`orders`, `attendants`, `customers`) | Optimistic locking via Exposed — protege contra updates concorrentes em status transitions sem usar `SELECT ... FOR UPDATE`. |
+| **`document` UNIQUE em `attendants`, `customers`** | CPF/CNPJ é identidade externa. UNIQUE física no banco impede duplicatas mesmo em race conditions. |
+| **`status VARCHAR` com `CHECK` em vez de `ENUM` SQL** | `ALTER TYPE ADD VALUE` no Postgres é OK em 12+, mas não dá pra remover valor. VARCHAR + CHECK migra mais facilmente. |
 | **`events.external BOOLEAN`** | Marca eventos que devem ser relay-ed pro SNS. Permite evento "interno" (in-process via EventBus) sem reescrever o subsistema. |
 | **`processed_events (event_id, consumer_id)` PK composta** | Idempotência multi-consumer: o mesmo evento pode ser processado por handlers diferentes; cada par é único. |
 | **`order_approval_tokens.id UUID PK`** | Token UUID single-use enviado no email para o cliente. Sem PII, válido por TTL configurado, marcado `used=true` na primeira utilização. |
 | **`shedlock` table** | Locking distribuído pro scheduler do app — múltiplos pods da app não disputam o outbox simultaneamente. |
-| **`attendants` separado de `users`** | Migration V13 renomeou `users` (antiga) para `attendants` para clarificar: `attendants` é entidade de domínio (CRUD via app), `users` (nova, do Lambda) guarda credenciais. Relacionamento 1-1 via `users.attendant_id UNIQUE`. |
+| **`attendants` separado de `users` (Lambda)** | Migration V13 separou domínio de credenciais: `attendants` é entidade de domínio (CRUD via app), `users` (Lambda) guarda credenciais. Schema do Lambda é gerenciado de forma independente. |
 
 ## 4. Índices
 
@@ -42,8 +43,6 @@ Migrations criam índices estratégicos:
 
 | Índice | Propósito |
 |---|---|
-| `idx_users_document_status` (UNIQUE) | Lookup do Lambda login: `WHERE document=$1 AND status='ACTIVE'` |
-| `idx_users_attendant_id` | Reverse lookup attendant → user |
 | `idx_orders_status` (criado em V9) | Dashboard de operação filtra por status |
 | `idx_orders_customer_id` | Listagem "minhas OS" |
 | `idx_events_unprocessed` (partial: `WHERE processed=false`) | Outbox relay scan eficiente |
@@ -55,7 +54,6 @@ Migrations criam índices estratégicos:
 - **CUSTOMER 1 — N ORDER**: cliente abre múltiplas ordens ao longo do tempo
 - **VEHICLE 1 — N ORDER**: histórico de manutenção rastreável por veículo
 - **ATTENDANT 1 — N ORDER**: cada OS é atendida por exatamente 1 atendente, mas atendente atende várias
-- **ATTENDANT 1 — 1 USER**: relação espelhada para credenciais separadas (`users.attendant_id` UNIQUE)
 - **ORDER N — N SERVICE** (via `order_services`)
 - **ORDER N — N SUPPLY** (via `order_supplies`, com quantidade consumida)
 - **SERVICE N — N SUPPLY** (via `service_supplies`, default de insumos por serviço)
@@ -72,13 +70,13 @@ Migrations criam índices estratégicos:
 | V4 | `commands` (outbox de comandos) |
 | V5 | `events` (outbox de eventos) |
 | V6 | `processed_events` (idempotência) |
-| V7 | `refresh_tokens` |
+| V7 | `refresh_tokens` (dropado em V13 via CASCADE) |
 | V8 | `order_schedules` (entrega/retorno do veículo) |
 | V9 | Índices para outbox e queries de status |
 | V10 | `shedlock` (lock distribuído) |
 | V11 | `order_approval_tokens` (tokens single-use para cliente) |
 | V12 | `order_execution_metrics` (tempo em execução) |
-| V13 | Renomeia `users` (legado) → `attendants`; cria novo `users` (Lambda login) com `attendant_id` UNIQUE |
+| V13 | Dropa `users` legado + `refresh_tokens` (CASCADE); cria `attendants` (entidade de domínio sem credenciais) |
 
 ## 7. Bancos por ambiente
 
@@ -86,7 +84,7 @@ Cada cluster RDS hospeda 2 databases lógicos:
 
 | DB | Propósito | Owner |
 |---|---|---|
-| `auto_repair_shop_hml` / `auto_repair_shop_prod` | App + Lambda login compartilham este DB | `app_hml` / `app_prod` |
+| `auto_repair_shop_hml` / `auto_repair_shop_prod` | App principal + Lambda login (tabela `users` própria do Lambda) | `app_hml` / `app_prod` |
 | `grafana_hml` / `grafana_prod` | Backend de metadados do Grafana | `grafana_hml` / `grafana_prod` |
 
 Roles e databases são criados por um **Kubernetes Job** in-cluster (`modules/k8s/db-init.tf`) — não via Terraform-provider-postgresql, que exigiria expor o RDS pro runner.

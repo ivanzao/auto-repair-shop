@@ -17,16 +17,16 @@ erDiagram
     ORDERS ||--o{ ORDER_APPROVAL_TOKENS : "has"
     ORDERS ||--|| ORDER_EXECUTION_METRICS : "measured_by"
     ORDERS ||--o{ ORDER_SCHEDULES : "scheduled_for"
-    ATTENDANTS ||--|| USERS : "credentials"
-    USERS ||--o{ REFRESH_TOKENS : "has"
 
     CUSTOMERS {
         UUID id PK
         VARCHAR document "UNIQUE - CPF/CNPJ"
         VARCHAR name
         VARCHAR email
+        VARCHAR contact
         TIMESTAMP created_at
         TIMESTAMP modified_at
+        INT version "optimistic lock"
     }
 
     VEHICLES {
@@ -37,23 +37,19 @@ erDiagram
         VARCHAR brand
         INT year
         TIMESTAMP created_at
+        TIMESTAMP modified_at
+        INT version "optimistic lock"
     }
 
     ATTENDANTS {
         UUID id PK
+        VARCHAR name
         VARCHAR document "UNIQUE - CPF"
         VARCHAR email "UNIQUE"
-        VARCHAR name
+        VARCHAR contact
         TIMESTAMP created_at
-    }
-
-    USERS {
-        UUID id PK
-        VARCHAR document "UNIQUE - CPF"
-        VARCHAR role "ADMIN | ATTENDANT"
-        VARCHAR hashed_password "bcrypt"
-        VARCHAR status "ACTIVE | INACTIVE"
-        UUID attendant_id FK "UNIQUE - 1:1 com attendants"
+        TIMESTAMP modified_at
+        INT version "optimistic lock"
     }
 
     ORDERS {
@@ -78,7 +74,8 @@ erDiagram
     SUPPLIES {
         UUID id PK
         VARCHAR name
-        INT stock_quantity
+        INT quantity
+        NUMERIC price
     }
 
     ORDER_SERVICES {
@@ -119,12 +116,6 @@ erDiagram
         VARCHAR type "DELIVERY | RETURN"
     }
 
-    REFRESH_TOKENS {
-        UUID token PK
-        UUID user_id FK
-        TIMESTAMP expires_at
-    }
-
     EVENTS {
         UUID id PK
         VARCHAR type
@@ -153,7 +144,6 @@ erDiagram
 - **CUSTOMER 1—N ORDER**: cliente abre múltiplas OS ao longo do tempo
 - **VEHICLE 1—N ORDER**: histórico de manutenção por veículo
 - **ATTENDANT 1—N ORDER**: cada OS é atendida por exatamente 1 atendente
-- **ATTENDANT 1—1 USER**: a tabela `users` (credencial) tem `attendant_id` UNIQUE — gerenciado pela Lambda login (escrita) e provisionamento administrativo
 - **ORDER N—N SERVICE** via `order_services`
 - **ORDER N—N SUPPLY** via `order_supplies` (suprimentos consumidos com quantidade)
 - **SERVICE N—N SUPPLY** via `service_supplies` (insumos default por tipo de serviço)
@@ -161,9 +151,4 @@ erDiagram
 - **ORDER 1—1 ORDER_EXECUTION_METRICS**: registro de tempo em execução, UNIQUE constraint garante singleton
 - **EVENTS / PROCESSED_EVENTS**: outbox + idempotência
 
-## Notas
-
-- Ver [Modelo Relacional — Justificativa formal](../database/modelo-relacional.md) para discussão das escolhas de schema, índices e justificativa do banco.
-- `users` é dona do **Lambda login** (`auto-repair-shop-lambdas/db/migration/V1__create_users.sql`).
-- `attendants` é dona da **app principal** (Flyway no `storage/`).
-- Sincronização: ao criar um atendente via app, o administrador também deve criar credenciais em `users` com `attendant_id` apontando para o registro.
+Ver [Modelo Relacional — Justificativa formal](../database/modelo-relacional.md) para discussão das escolhas de schema, índices e justificativa do banco.
