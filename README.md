@@ -139,11 +139,10 @@ infra/k8s/
 │   ├── configmap.yaml          # SERVER_PORT, etc.
 │   ├── hpa.yaml                # CPU 70% (min/max definidos no overlay)
 │   ├── servicemonitor.yaml     # Prometheus scrape de /metrics
-│   ├── serviceaccount.yaml     # IRSA annotation injetada no overlay
 │   └── kustomization.yaml
 └── overlays/
-    ├── hml/{kustomization,deployment-patch,configmap-patch,serviceaccount-patch}.yaml
-    └── prod/{kustomization,deployment-patch,configmap-patch,serviceaccount-patch}.yaml
+    ├── hml/{kustomization,deployment-patch,configmap-patch}.yaml
+    └── prod/{kustomization,deployment-patch,configmap-patch}.yaml
 ```
 
 ### Aplicar manualmente
