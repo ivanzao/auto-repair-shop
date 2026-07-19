@@ -4,23 +4,12 @@ import br.com.soat.IntegrationTest
 import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.dto.CreateOrderRequestDTO
-import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
-import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
-import br.com.soat.order.dto.SupplyRequirementDTO
 import br.com.soat.order.model.Order
-import br.com.soat.order.model.OrderApprovalToken
-import br.com.soat.order.model.OrderExecutionMetric
 import br.com.soat.order.model.OrderSchedule
-import br.com.soat.order.repository.OrderApprovalTokenRepository
-import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
-import br.com.soat.supply.repository.SupplyRepository
-import br.com.soat.supply.createSupply
-import br.com.soat.supply.model.SupplyRequirement
 import br.com.soat.vehicle.createVehicle
-import br.com.soat.waitFor
 import java.time.LocalDateTime
 import java.time.ZoneOffset.UTC
 import java.time.format.DateTimeFormatter
@@ -29,203 +18,80 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
+/**
+ * REST-only lifecycle owned by the order service. As transições dirigidas por
+ * eventos (IN_PROGRESS/COMPLETED/CANCELED) chegam de billing/execution e são
+ * cobertas nos testes de OrderStatusUseCase (unitários) e no fluxo BDD Cucumber.
+ */
 class OrderLifecycleIntegrationTest : IntegrationTest() {
 
     private val orderRepository: OrderRepository by lazy { get<OrderRepository>() }
     private val orderScheduleRepository: OrderScheduleRepository by lazy { get<OrderScheduleRepository>() }
-    private val orderApprovalTokenRepository: OrderApprovalTokenRepository by lazy { get<OrderApprovalTokenRepository>() }
-    private val orderExecutionMetricRepository: OrderExecutionMetricRepository by lazy { get<OrderExecutionMetricRepository>() }
-    private val supplyRepository: SupplyRepository by lazy { get<SupplyRepository>() }
 
     @Test
-    fun `should complete full order lifecycle`() {
-        // prepare
+    fun `creates order as RECEIVED and exposes it via public status endpoint`() {
         val attendant = createAttendant()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
-        val supply = createSupply(quantityInStock = 20)
-        val serviceAtCreation = createService(name = "Oil Change", requiredSupplies = listOf(SupplyRequirement(supply.id, 2)))
-        val serviceAtDiagnosis = createService(name = "Brake Repair", requiredSupplies = listOf(SupplyRequirement(supply.id, 3)))
+        val service = createService(name = "Oil Change")
 
         val bearerToken = attendantHeaders(attendant.id)
 
-        // create order with 1 service and 1 extra supply
         val requestDto = CreateOrderRequestDTO(
             customerId = customer.id,
             vehicleId = vehicle.id,
             description = "Noise in the engine",
-            servicesIds = listOf(serviceAtCreation.id),
-            extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 1))
+            servicesIds = listOf(service.id),
+            extraSuppliesRequests = emptyList(),
         )
         val createOrderResponse = http.createOrder(requestDto, bearerToken)
         assertEquals(201, createOrderResponse.statusCode())
 
-        // validate order was created with service and extra supply
         val createdOrder = orderRepository.findById(createOrderResponse.body().id)!!
         assertEquals(customer.id, createdOrder.customer.id)
         assertEquals(vehicle.id, createdOrder.vehicle.id)
         assertEquals(attendant.id, createdOrder.attendantId)
         assertEquals(requestDto.description, createdOrder.description)
         assertEquals(Order.Status.RECEIVED, createdOrder.status)
-        assertEquals(listOf(serviceAtCreation.id), createdOrder.services.map { it.id })
-        assertEquals(listOf(SupplyRequirement(supply.id, 1)), createdOrder.extraSupplies)
+        assertEquals(listOf(service.id), createdOrder.services.map { it.id })
 
-        // validate public status endpoint (no authentication)
-        val statusAfterCreation = http.getOrderStatus(createdOrder.id.toString())
-        assertEquals(200, statusAfterCreation.statusCode())
-        assertEquals(createdOrder.id, statusAfterCreation.body().id)
-        assertEquals(Order.Status.RECEIVED, statusAfterCreation.body().status)
-        assertNotNull(statusAfterCreation.body().modifiedAt)
+        val status = http.getOrderStatus(createdOrder.id.toString())
+        assertEquals(200, status.statusCode())
+        assertEquals(createdOrder.id, status.body().id)
+        assertEquals(Order.Status.RECEIVED, status.body().status)
+        assertNotNull(status.body().modifiedAt)
+    }
 
-        // create and validate order schedule delivery
-        val scheduleDeliveryRequest = OrderScheduleVehicleRequestDTO(
+    @Test
+    fun `schedules vehicle delivery for a RECEIVED order`() {
+        val attendant = createAttendant()
+        val customer = createCustomer()
+        val vehicle = createVehicle(customer.id)
+        val service = createService(name = "Brake Repair")
+        val bearerToken = attendantHeaders(attendant.id)
+
+        val order = http.createOrder(
+            CreateOrderRequestDTO(
+                customerId = customer.id,
+                vehicleId = vehicle.id,
+                description = "Squeaky brakes",
+                servicesIds = listOf(service.id),
+                extraSuppliesRequests = emptyList(),
+            ),
+            bearerToken,
+        ).body()
+
+        val scheduleRequest = OrderScheduleVehicleRequestDTO(
             dateTime = LocalDateTime.now().atZone(UTC).plusHours(2)
         )
-        val scheduleDeliveryResponse = http.scheduleDelivery(createdOrder.id.toString(), scheduleDeliveryRequest, bearerToken)
-        assertEquals(200, scheduleDeliveryResponse.statusCode())
+        val response = http.scheduleDelivery(order.id.toString(), scheduleRequest, bearerToken)
+        assertEquals(200, response.statusCode())
 
-        val createdOrderScheduleDelivery = orderScheduleRepository.findAllByOrderId(createdOrder.id).single()
+        val schedule = orderScheduleRepository.findAllByOrderId(order.id).single()
         assertEquals(
-            scheduleDeliveryRequest.dateTime.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-            createdOrderScheduleDelivery.dateTime.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            scheduleRequest.dateTime.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+            schedule.dateTime.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         )
-        assertEquals(OrderSchedule.Type.DELIVERY, createdOrderScheduleDelivery.type)
-
-        // start diagnosis
-        val startDiagnosisRequest = StartOrderDiagnosisRequestDTO(technician = "Tech Mike")
-        val orderInDiagnosisResponse = http.startDiagnosis(createdOrder.id.toString(), startDiagnosisRequest, bearerToken)
-        assertEquals(200, orderInDiagnosisResponse.statusCode())
-
-        val orderInDiagnosis = orderRepository.findById(createdOrder.id)!!
-        assertEquals(Order.Status.IN_DIAGNOSIS, orderInDiagnosis.status)
-        assertEquals(startDiagnosisRequest.technician, orderInDiagnosis.technician)
-
-        // validate public status endpoint shows IN_DIAGNOSIS
-        val statusAfterDiagnosis = http.getOrderStatus(orderInDiagnosis.id.toString())
-        assertEquals(200, statusAfterDiagnosis.statusCode())
-        assertEquals(Order.Status.IN_DIAGNOSIS, statusAfterDiagnosis.body().status)
-
-        // finish diagnosis adding 1 more service and 1 more extra supply
-        val finishDiagnosisRequest = FinishOrderDiagnosisRequestDTO(
-            servicesIds = listOf(serviceAtDiagnosis.id),
-            extraSuppliesRequests = listOf(SupplyRequirementDTO(supplyId = supply.id, quantity = 2))
-        )
-        val orderDiagnosedResponse = http.finishDiagnosis(orderInDiagnosis.id.toString(), finishDiagnosisRequest, bearerToken)
-        assertEquals(200, orderDiagnosedResponse.statusCode())
-
-        var orderWaitingApproval: Order? = orderRepository.findById(orderInDiagnosis.id)
-        var approvalToken: OrderApprovalToken? = null
-        waitFor {
-            orderWaitingApproval = orderRepository.findById(orderInDiagnosis.id)
-            orderWaitingApproval?.status == Order.Status.WAITING_APPROVAL
-        }
-        assertEquals(Order.Status.WAITING_APPROVAL, orderWaitingApproval!!.status)
-
-        // validate both services are present (from creation + diagnosis)
-        assertEquals(
-            listOf(serviceAtCreation.id, serviceAtDiagnosis.id),
-            orderWaitingApproval!!.services.map { it.id }
-        )
-
-        // validate extra supplies are consolidated (1 from creation + 2 from diagnosis = 3 total)
-        assertEquals(
-            listOf(SupplyRequirement(supply.id, 3)),
-            orderWaitingApproval!!.extraSupplies
-        )
-
-        // validate public status endpoint shows WAITING_APPROVAL
-        val statusAfterWaitingApproval = http.getOrderStatus(orderWaitingApproval!!.id.toString())
-        assertEquals(200, statusAfterWaitingApproval.statusCode())
-        assertEquals(Order.Status.WAITING_APPROVAL, statusAfterWaitingApproval.body().status)
-
-        // assert approval token was created
-        waitFor {
-            approvalToken = orderApprovalTokenRepository.findByOrderId(orderWaitingApproval!!.id)
-            approvalToken != null
-        }
-        assertEquals(orderWaitingApproval!!.id, approvalToken!!.orderId)
-        assertEquals(null, approvalToken!!.usedAt)
-        assertEquals(true, approvalToken!!.isValid())
-
-        // assert reserved supplies
-        // total supply requirements: serviceAtCreation(2) + serviceAtDiagnosis(3) + extraAtCreation(1) + extraAtDiagnosis(2) = 8
-        val requestedSupply = supplyRepository.findById(supply.id)!!
-        assertEquals(12, requestedSupply.quantityInStock) // 20 starting - 8 total reserved
-
-        // assert SendQuoteEmailCommand was published to SNS (received via LocalStack SQS subscriber)
-        val msg = waitForSnsMessage("SendQuoteEmailCommand")
-
-        assertEquals(orderWaitingApproval!!.id.toString(), msg["orderId"].asText())
-        assertEquals(approvalToken!!.id.toString(), msg["callbackToken"].asText())
-        assertEquals(customer.name, msg["customerName"].asText())
-        assertEquals(customer.email.value, msg["customerEmail"].asText())
-        assertEquals(
-            orderWaitingApproval!!.services.map { it.name },
-            msg["services"].map { it["name"].asText() },
-        )
-        assertEquals(1, msg["supplies"].size())
-        assertEquals(supply.name, msg["supplies"][0]["name"].asText())
-        assertEquals(8, msg["supplies"][0]["quantity"].asInt())
-
-        // approve order by token
-        val approveOrderResponse = http.approveOrder(approvalToken!!.id.toString())
-        assertEquals(200, approveOrderResponse.statusCode())
-
-        // assert order status is IN_PROGRESS
-        val orderInProgress = orderRepository.findById(orderWaitingApproval!!.id)!!
-        assertEquals(Order.Status.IN_PROGRESS, orderInProgress.status)
-
-        // validate public status endpoint shows IN_PROGRESS
-        val statusAfterApproval = http.getOrderStatus(orderInProgress.id.toString())
-        assertEquals(200, statusAfterApproval.statusCode())
-        assertEquals(Order.Status.IN_PROGRESS, statusAfterApproval.body().status)
-
-        // assert approval token was marked as used
-        val usedApprovalToken = orderApprovalTokenRepository.findById(approvalToken!!.id)!!
-        assertEquals(false, usedApprovalToken.isValid())
-        assertEquals(true, usedApprovalToken.usedAt != null)
-
-        // assert execution metric was created with inProgressAt
-        var executionMetric: OrderExecutionMetric? = null
-        waitFor {
-            executionMetric = orderExecutionMetricRepository.findByOrderId(orderInProgress.id)
-            executionMetric != null
-        }
-        assertNotNull(executionMetric)
-        assertNotNull(executionMetric!!.inProgressAt)
-        assertEquals(null, executionMetric!!.completedAt)
-
-        // complete order
-        val completeOrderResponse = http.completeOrder(orderInProgress.id.toString(), bearerToken)
-        assertEquals(200, completeOrderResponse.statusCode())
-
-        // assert order status is COMPLETED
-        val orderCompleted = orderRepository.findById(orderInProgress.id)!!
-        assertEquals(Order.Status.COMPLETED, orderCompleted.status)
-
-        // validate public status endpoint shows COMPLETED
-        val statusAfterCompletion = http.getOrderStatus(orderCompleted.id.toString())
-        assertEquals(200, statusAfterCompletion.statusCode())
-        assertEquals(Order.Status.COMPLETED, statusAfterCompletion.body().status)
-
-        // assert execution metric was updated with completedAt
-        waitFor {
-            executionMetric = orderExecutionMetricRepository.findByOrderId(orderCompleted.id)
-            executionMetric?.completedAt != null
-        }
-        assertNotNull(executionMetric!!.completedAt)
-
-        // deliver order
-        val deliverOrderResponse = http.deliverOrder(orderCompleted.id.toString(), bearerToken)
-        assertEquals(200, deliverOrderResponse.statusCode())
-
-        // assert order status is DELIVERED
-        val orderDelivered = orderRepository.findById(orderCompleted.id)!!
-        assertEquals(Order.Status.DELIVERED, orderDelivered.status)
-
-        // validate public status endpoint shows DELIVERED
-        val statusAfterDelivery = http.getOrderStatus(orderDelivered.id.toString())
-        assertEquals(200, statusAfterDelivery.statusCode())
-        assertEquals(Order.Status.DELIVERED, statusAfterDelivery.body().status)
+        assertEquals(OrderSchedule.Type.DELIVERY, schedule.type)
     }
 }

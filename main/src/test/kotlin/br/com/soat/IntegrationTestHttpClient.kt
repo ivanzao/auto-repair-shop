@@ -3,16 +3,12 @@ package br.com.soat
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
 import br.com.soat.customer.dto.CustomerResponseDTO
 import br.com.soat.order.dto.CreateOrderRequestDTO
-import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderMetricsResponseDTO
 import br.com.soat.order.dto.OrderResponseDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.OrderStatusResponseDTO
-import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
 import br.com.soat.service.dto.CreateServiceRequestDTO
 import br.com.soat.service.dto.ServiceResponseDTO
-import br.com.soat.supply.dto.CreateSupplyRequestDTO
-import br.com.soat.supply.dto.SupplyResponseDTO
 import br.com.soat.attendant.dto.AttendantResponseDTO
 import br.com.soat.attendant.dto.CreateAttendantRequestDTO
 import br.com.soat.attendant.dto.UpdateAttendantRequestDTO
@@ -62,26 +58,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun startDiagnosis(
-        orderId: String,
-        dto: StartOrderDiagnosisRequestDTO,
-        authHeaders: Map<String, String>
-    ): HttpResponse<OrderResponseDTO> {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/orders/$orderId/start-diagnosis", body, authHeaders)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
-    }
-
-    fun finishDiagnosis(
-        orderId: String,
-        dto: FinishOrderDiagnosisRequestDTO,
-        authHeaders: Map<String, String>
-    ): HttpResponse<OrderResponseDTO> {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/orders/$orderId/finish-diagnosis", body, authHeaders)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
-    }
-
     fun scheduleDelivery(
         orderId: String,
         dto: OrderScheduleVehicleRequestDTO,
@@ -89,19 +65,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
     ): HttpResponse<*> {
         val body = mapper.writeValueAsString(dto)
         return post("/v1/orders/$orderId/schedule-delivery", body, authHeaders)
-    }
-
-    fun approveOrder(token: String): HttpResponse<*> {
-        return get("/v1/orders/quote/approve?token=$token")
-    }
-
-    fun declineOrder(token: String): HttpResponse<*> {
-        return get("/v1/orders/quote/decline?token=$token")
-    }
-
-    fun completeOrder(orderId: String, authHeaders: Map<String, String>): HttpResponse<OrderResponseDTO> {
-        val response = post("/v1/orders/$orderId/complete", "{}", authHeaders)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
     fun deliverOrder(orderId: String, authHeaders: Map<String, String>): HttpResponse<OrderResponseDTO> {
@@ -179,27 +142,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
 
     fun deleteVehicle(vehicleId: String, authHeaders: Map<String, String>): HttpResponse<String> {
         return delete("/v1/vehicles/$vehicleId", authHeaders)
-    }
-
-    // ==================== SUPPLY ====================
-
-    fun createSupply(dto: CreateSupplyRequestDTO, authHeaders: Map<String, String>): HttpResponse<SupplyResponseDTO> {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/supplies", body, authHeaders)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
-    }
-
-    fun getSupply(supplyId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
-        return get("/v1/supplies/$supplyId", authHeaders)
-    }
-
-    fun updateSupply(supplyId: UUID, dto: CreateSupplyRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
-        val body = mapper.writeValueAsString(dto)
-        return put("/v1/supplies/$supplyId", body, authHeaders)
-    }
-
-    fun deleteSupply(supplyId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
-        return delete("/v1/supplies/$supplyId", authHeaders)
     }
 
     // ==================== SERVICE ====================

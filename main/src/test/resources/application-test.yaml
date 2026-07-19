@@ -11,6 +11,9 @@ security:
 sns:
   topic:
     arn: placeholder
+sqs:
+  queue:
+    url: placeholder
 aws:
   region: us-east-1
   endpoint: placeholder

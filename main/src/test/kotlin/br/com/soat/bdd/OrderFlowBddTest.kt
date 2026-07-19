@@ -1,0 +1,17 @@
+package br.com.soat.bdd
+
+import io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME
+import org.junit.platform.suite.api.ConfigurationParameter
+import org.junit.platform.suite.api.IncludeEngines
+import org.junit.platform.suite.api.SelectClasspathResource
+import org.junit.platform.suite.api.Suite
+
+/**
+ * Roda o fluxo BDD (Cucumber) como uma suíte JUnit Platform. O nome termina em
+ * `IntegrationTest` para ser incluído na task `integrationTest`.
+ */
+@Suite
+@IncludeEngines("cucumber")
+@SelectClasspathResource("features")
+@ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "br.com.soat.bdd")
+class OrderFlowBddTest

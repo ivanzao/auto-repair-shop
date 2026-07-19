@@ -30,22 +30,28 @@ class SnsClient(
         }
     }
 
-    fun publish(payload: String, eventType: String, messageId: String) {
+    fun publish(payload: String, eventType: String, messageId: String, traceparent: String? = null) {
         runBlocking {
             client.publish(
                 PublishRequest {
                     topicArn = this@SnsClient.topicArn
                     message = payload
-                    messageAttributes = mapOf(
-                        "event_type" to MessageAttributeValue {
+                    messageAttributes = buildMap {
+                        put("eventType", MessageAttributeValue {
                             dataType = "String"
                             stringValue = eventType
-                        },
-                        "message_id" to MessageAttributeValue {
+                        })
+                        put("messageId", MessageAttributeValue {
                             dataType = "String"
                             stringValue = messageId
-                        },
-                    )
+                        })
+                        if (traceparent != null) {
+                            put("traceparent", MessageAttributeValue {
+                                dataType = "String"
+                                stringValue = traceparent
+                            })
+                        }
+                    }
                 },
             )
         }

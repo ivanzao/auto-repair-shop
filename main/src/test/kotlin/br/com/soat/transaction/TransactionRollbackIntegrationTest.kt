@@ -1,128 +1,83 @@
 package br.com.soat.transaction
 
 import br.com.soat.IntegrationTest
+import br.com.soat.service.model.Service
+import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.supply.repository.SupplyRepository
-import br.com.soat.supply.createSupply
 import java.math.BigDecimal
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
+/**
+ * Cobre o comportamento transacional do [RepositoryTransactionHandler] usando o
+ * catálogo de serviços (que permanece no order). O estoque de peças saiu para o
+ * execution, então a cobertura de rollback/commit passou a usar o preço do serviço.
+ */
 class TransactionRollbackIntegrationTest : IntegrationTest() {
+
+    private fun newService(name: String, price: BigDecimal): Service {
+        val repository = get<ServiceRepository>()
+        return repository.create(
+            Service(name = name, description = "tx test", price = price)
+        )
+    }
 
     @Test
     fun `should rollback all changes when transaction fails`() {
-        val supplyRepository = get<SupplyRepository>()
+        val repository = get<ServiceRepository>()
         val tx = get<RepositoryTransactionHandler>()
 
-        // Create initial supply with 100 units
-        val initialSupply = createSupply(
-            name = "Test Supply for Rollback",
-            description = "Testing rollback",
-            quantityInStock = 100,
-            price = BigDecimal("10.00")
-        )
+        val service = newService("Service for Rollback", BigDecimal("100.00"))
+        assertEquals(BigDecimal("100.00"), repository.findById(service.id)!!.price)
 
-        val supplyId = initialSupply.id
-
-        // Verify initial stock
-        val supplyBeforeTransaction = supplyRepository.findById(supplyId)!!
-        assertEquals(100, supplyBeforeTransaction.quantityInStock, "Initial stock should be 100")
-
-        // Attempt transaction that will fail
         assertThrows(RuntimeException::class.java) {
             tx.inTransaction {
-                // Update supply stock (reduce by 50)
-                val updatedSupply = supplyBeforeTransaction.copy(quantityInStock = 50)
-                supplyRepository.update(updatedSupply)
-
-                // Force an exception to trigger rollback
+                repository.update(service.copy(price = BigDecimal("50.00")))
                 throw RuntimeException("Simulated failure during transaction")
             }
         }
 
-        // Verify stock was rolled back to original value
-        val supplyAfterRollback = supplyRepository.findById(supplyId)!!
-        assertEquals(100, supplyAfterRollback.quantityInStock,
-            "Stock should be rolled back to 100 after transaction failure")
+        assertEquals(
+            BigDecimal("100.00"), repository.findById(service.id)!!.price,
+            "Price should be rolled back after transaction failure"
+        )
     }
 
     @Test
     fun `should commit all changes when transaction succeeds`() {
-        val supplyRepository = get<SupplyRepository>()
+        val repository = get<ServiceRepository>()
         val tx = get<RepositoryTransactionHandler>()
 
-        // Create initial supply with 100 units
-        val initialSupply = createSupply(
-            name = "Test Supply for Commit",
-            description = "Testing commit",
-            quantityInStock = 100,
-            price = BigDecimal("10.00")
-        )
+        val service = newService("Service for Commit", BigDecimal("100.00"))
 
-        val supplyId = initialSupply.id
-
-        // Execute successful transaction
         tx.inTransaction {
-            val supply = supplyRepository.findById(supplyId)!!
-            val updatedSupply = supply.copy(quantityInStock = 50)
-            supplyRepository.update(updatedSupply)
-            // No exception - transaction should commit
+            repository.update(repository.findById(service.id)!!.copy(price = BigDecimal("50.00")))
         }
 
-        // Verify stock was persisted
-        val supplyAfterCommit = supplyRepository.findById(supplyId)!!
-        assertEquals(50, supplyAfterCommit.quantityInStock,
-            "Stock should be committed to 50 after successful transaction")
+        assertEquals(
+            BigDecimal("50.00"), repository.findById(service.id)!!.price,
+            "Price should be committed after successful transaction"
+        )
     }
 
     @Test
     fun `should rollback multiple repository operations atomically`() {
-        val supplyRepository = get<SupplyRepository>()
+        val repository = get<ServiceRepository>()
         val tx = get<RepositoryTransactionHandler>()
 
-        // Create initial data
-        val supply1 = createSupply(
-            name = "Supply 1",
-            description = "First supply",
-            quantityInStock = 100,
-            price = BigDecimal("10.00")
-        )
+        val service1 = newService("Service 1", BigDecimal("100.00"))
+        val service2 = newService("Service 2", BigDecimal("200.00"))
 
-        val supply2 = createSupply(
-            name = "Supply 2",
-            description = "Second supply",
-            quantityInStock = 200,
-            price = BigDecimal("20.00")
-        )
-
-        // Get initial values
-        val initialStock1 = supplyRepository.findById(supply1.id)!!.quantityInStock
-        val initialStock2 = supplyRepository.findById(supply2.id)!!.quantityInStock
-
-        // Attempt transaction that modifies multiple entities
         assertThrows(RuntimeException::class.java) {
             tx.inTransaction {
-                // Update first supply
-                val updated1 = supplyRepository.findById(supply1.id)!!
-                    .copy(quantityInStock = initialStock1 - 10)
-                supplyRepository.update(updated1)
-
-                // Update second supply
-                val updated2 = supplyRepository.findById(supply2.id)!!
-                    .copy(quantityInStock = initialStock2 - 20)
-                supplyRepository.update(updated2)
-
-                // Force failure after both updates
+                repository.update(repository.findById(service1.id)!!.copy(price = BigDecimal("90.00")))
+                repository.update(repository.findById(service2.id)!!.copy(price = BigDecimal("180.00")))
                 throw RuntimeException("Simulated failure after multiple updates")
             }
         }
 
-        // Verify ALL changes were rolled back
-        assertEquals(initialStock1, supplyRepository.findById(supply1.id)!!.quantityInStock,
-            "Supply 1 stock should be rolled back")
-        assertEquals(initialStock2, supplyRepository.findById(supply2.id)!!.quantityInStock,
-            "Supply 2 stock should be rolled back")
+        assertEquals(BigDecimal("100.00"), repository.findById(service1.id)!!.price, "Service 1 should be rolled back")
+        assertEquals(BigDecimal("200.00"), repository.findById(service2.id)!!.price, "Service 2 should be rolled back")
     }
 }

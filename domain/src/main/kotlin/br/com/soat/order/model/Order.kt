@@ -28,49 +28,28 @@ data class Order(
     val technician: String? = null,
 ) {
 
-    fun inDiagnosis(technician: String): Order {
-        if (status != Status.RECEIVED)
-            throw IllegalOrderStateException("Order must be RECEIVED. Current status: $status")
+    /** Pagamento confirmado: RECEIVED → IN_PROGRESS. Idempotente (no-op fora de RECEIVED). */
+    fun markInProgress(): Order =
+        if (status == Status.RECEIVED) copy(status = Status.IN_PROGRESS, modifiedAt = now()) else this
 
-        return copy(status = Status.IN_DIAGNOSIS, technician = technician, modifiedAt = now())
-    }
+    /** Execução concluída: IN_PROGRESS → COMPLETED. Idempotente (no-op fora de IN_PROGRESS). */
+    fun markCompleted(): Order =
+        if (status == Status.IN_PROGRESS) copy(status = Status.COMPLETED, modifiedAt = now()) else this
 
-    fun waitingApproval(): Order {
-        if (status != Status.IN_DIAGNOSIS)
-            throw IllegalOrderStateException("Order must be IN_DIAGNOSIS. Current status: $status")
+    /**
+     * Compensação: cancela a OS em qualquer estado não-terminal. `COMPLETED` é
+     * terminal — `ExecutionFailed` compensa durante a execução (OS IN_PROGRESS),
+     * antes da conclusão, então nunca cancela uma OS já concluída. Idempotente.
+     */
+    fun markCanceled(): Order =
+        if (status in TERMINAL) this else copy(status = Status.CANCELED, modifiedAt = now())
 
-        return copy(status = Status.WAITING_APPROVAL, modifiedAt = now())
-    }
-
-    fun inProgress(): Order {
-        if (status != Status.WAITING_APPROVAL)
-            throw IllegalOrderStateException("Order must be WAITING_APPROVAL. Current status: $status")
-
-        return copy(status = Status.IN_PROGRESS, modifiedAt = now())
-    }
-
-    fun completed() : Order {
-        if (status != Status.IN_PROGRESS)
-            throw IllegalOrderStateException("Order must be IN_PROGRESS. Current status: $status")
-
-        return copy(status = Status.COMPLETED, modifiedAt = now())
-    }
-
-    fun delivered() : Order {
+    /** Entrega manual do veículo (REST): COMPLETED → DELIVERED. */
+    fun delivered(): Order {
         if (status != Status.COMPLETED)
             throw IllegalOrderStateException("Order must be COMPLETED. Current status: $status")
 
         return copy(status = Status.DELIVERED, modifiedAt = now())
-    }
-
-    fun canceled() : Order {
-        if (status == Status.COMPLETED)
-            throw IllegalOrderStateException("Order must not be COMPLETED")
-
-        if (status == Status.CANCELED)
-            throw IllegalOrderStateException("Order already canceled")
-
-        return copy(status = Status.CANCELED, modifiedAt = now())
     }
 
     fun addServices(services: List<Service>) = copy(services = this.services + services)
@@ -93,6 +72,10 @@ data class Order(
     }
 
     enum class Status {
-        RECEIVED, IN_DIAGNOSIS, WAITING_APPROVAL, IN_PROGRESS, CANCELED, COMPLETED, DELIVERED
+        RECEIVED, IN_PROGRESS, CANCELED, COMPLETED, DELIVERED
+    }
+
+    companion object {
+        private val TERMINAL = setOf(Status.COMPLETED, Status.DELIVERED, Status.CANCELED)
     }
 }

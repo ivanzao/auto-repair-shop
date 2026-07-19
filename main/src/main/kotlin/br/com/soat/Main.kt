@@ -1,57 +1,43 @@
 package br.com.soat
 
-import br.com.soat.bus.CommandBus
-import br.com.soat.bus.EventBus
-import br.com.soat.command.CommandPostgresRepository
-import br.com.soat.command.CommandProcessor
-import br.com.soat.command.CommandPublisher
-import br.com.soat.command.handler.CommandHandler
-import br.com.soat.command.repository.CommandRepository
 import br.com.soat.config.Config
 import br.com.soat.config.fromClasspath
 import br.com.soat.attendant.AttendantPostgresRepository
 import br.com.soat.attendant.AttendantRepository
 import br.com.soat.attendant.AttendantUseCase
-import br.com.soat.consumer.CommandConsumerWorker
-import br.com.soat.consumer.EventConsumerWorker
+import br.com.soat.consumer.InboundEventConsumer
 import br.com.soat.customer.CustomerPostgresRepository
 import br.com.soat.customer.CustomerRepository
 import br.com.soat.customer.CustomerUseCase
-import br.com.soat.event.EventPostgresRepository
-import br.com.soat.event.EventProcessor
-import br.com.soat.event.EventPublisher
-import br.com.soat.event.handler.EventHandler
-import br.com.soat.event.repository.EventRepository
+import br.com.soat.event.InboundEventDispatcher
+import br.com.soat.event.InboundEventHandler
+import br.com.soat.event.OutboxEventPostgresRepository
+import br.com.soat.event.OutboxRepository
+import br.com.soat.event.ProcessedEventPostgresStore
+import br.com.soat.event.ProcessedEventStore
+import br.com.soat.messaging.MessageQueue
+import br.com.soat.messaging.OutboxRelay
 import br.com.soat.messaging.SnsClient
-import br.com.soat.messaging.SnsRelayCommandHandler
-import br.com.soat.order.OrderApprovalTokenPostgresRepository
+import br.com.soat.messaging.SqsClient
 import br.com.soat.order.OrderExecutionMetricPostgresRepository
-import br.com.soat.order.OrderListenerUseCase
 import br.com.soat.order.OrderPostgresRepository
 import br.com.soat.order.OrderSchedulePostgresRepository
+import br.com.soat.order.OrderStatusUseCase
 import br.com.soat.order.OrderUseCase
-import br.com.soat.order.event.handler.OrderCompletedEventHandler
-import br.com.soat.order.event.handler.OrderInProgressEventHandler
-import br.com.soat.order.event.handler.SuppliesReservedEventHandler
-import br.com.soat.order.repository.OrderApprovalTokenRepository
+import br.com.soat.order.event.handler.ExecutionFinishedHandler
+import br.com.soat.order.event.handler.ExecutionProgressHandler
+import br.com.soat.order.event.handler.OrderCancellationHandler
+import br.com.soat.order.event.handler.PaymentConfirmedHandler
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
-import br.com.soat.publisher.DefaultCommandPublisher
-import br.com.soat.publisher.DefaultEventPublisher
 import br.com.soat.scheduler.ScheduledTask
 import br.com.soat.scheduler.ScheduledTaskRunner
-import br.com.soat.scheduler.task.CommandProcessorTask
-import br.com.soat.scheduler.task.EventProcessorTask
+import br.com.soat.scheduler.task.OutboxRelayTask
 import br.com.soat.service.ServicePostgresRepository
 import br.com.soat.service.ServiceUseCase
 import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.supply.SupplyPostgresRepository
-import br.com.soat.supply.SupplyStockService
-import br.com.soat.supply.SupplyUseCase
-import br.com.soat.supply.model.event.handler.OrderDiagnoseFinishedEventHandler
-import br.com.soat.supply.repository.SupplyRepository
 import br.com.soat.transaction.PostgresTransactionHandler
 import br.com.soat.vehicle.VehiclePostgresRepository
 import br.com.soat.vehicle.VehicleRepository
@@ -85,9 +71,8 @@ fun main() {
 
     val dataSource = connectToDatabase(config)
 
-    koinApplication.koin.get<EventConsumerWorker>().start()
-    koinApplication.koin.get<CommandConsumerWorker>().start()
-    logger.info("Event and Command consumers started")
+    koinApplication.koin.get<InboundEventConsumer>().start()
+    logger.info("Inbound event consumer started")
 
     koinApplication.koin.get<ScheduledTaskRunner>().start(dataSource)
     logger.info("ScheduledTaskRunner started")
@@ -125,53 +110,52 @@ val applicationModule = module {
 
     // storage
     single<AttendantRepository> { AttendantPostgresRepository() }
-    single<SupplyRepository> { SupplyPostgresRepository() }
     single<VehicleRepository> { VehiclePostgresRepository() }
     single<CustomerRepository> { CustomerPostgresRepository() }
     single<OrderRepository> { OrderPostgresRepository(get()) }
     single<ServiceRepository> { ServicePostgresRepository() }
     single<OrderScheduleRepository> { OrderSchedulePostgresRepository() }
-    single<OrderApprovalTokenRepository> { OrderApprovalTokenPostgresRepository() }
     single<OrderExecutionMetricRepository> { OrderExecutionMetricPostgresRepository() }
-    single<EventRepository> { EventPostgresRepository() }
-    single<CommandRepository> { CommandPostgresRepository() }
+    single<OutboxRepository> { OutboxEventPostgresRepository() }
+    single<ProcessedEventStore> { ProcessedEventPostgresStore() }
     single<RepositoryTransactionHandler> { PostgresTransactionHandler() }
 
     // domain
     single<AttendantUseCase> { AttendantUseCase(get()) }
-    single<SupplyUseCase> { SupplyUseCase(get()) }
     single<ServiceUseCase> { ServiceUseCase(get()) }
-    single<SupplyStockService> { SupplyStockService(get(), get(), get(), get(), get()) }
     single<VehicleUseCase> { VehicleUseCase(get()) }
     single<CustomerUseCase> { CustomerUseCase(get()) }
-    single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    single<OrderListenerUseCase> { OrderListenerUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { OrderStatusUseCase(get(), get()) }
 
-    // pubsub
-    single { EventBus() }
-    single { CommandBus() }
+    // inbound event handlers (billing/execution -> order status)
+    single { PaymentConfirmedHandler(get()) } bind InboundEventHandler::class
+    single { ExecutionFinishedHandler(get()) } bind InboundEventHandler::class
+    single { OrderCancellationHandler(get()) } bind InboundEventHandler::class
+    single { ExecutionProgressHandler(get()) } bind InboundEventHandler::class
 
-    // event and command handlers
-    single { SnsRelayCommandHandler(get(), get()) } bind CommandHandler::class
-    single { OrderDiagnoseFinishedEventHandler(get()) } bind EventHandler::class
-    single { OrderInProgressEventHandler(get()) } bind EventHandler::class
-    single { OrderCompletedEventHandler(get()) } bind EventHandler::class
-    single { SuppliesReservedEventHandler(get()) } bind EventHandler::class
+    // inbound queue (SQS)
+    single<MessageQueue> {
+        val cfg = get<Config>()
+        SqsClient(
+            queueUrl = cfg.getString("sqs.queue.url"),
+            region = cfg.getStringOrNull("aws.region") ?: "us-east-1",
+            endpointOverride = cfg.getStringOrNull("aws.endpoint"),
+            accessKeyId = cfg.getStringOrNull("aws.accessKeyId"),
+            secretAccessKey = cfg.getStringOrNull("aws.secretAccessKey"),
+        )
+    }
 
-    single { CommandProcessor(get(), getAll()) }
-    single { EventProcessor(get(), getAll()) }
+    // event dispatch (inbound)
+    single { InboundEventDispatcher(get(), getAll<InboundEventHandler>()) }
 
-    // pubsub publishers
-    single<EventPublisher> { DefaultEventPublisher(get(), get()) }
-    single<CommandPublisher> { DefaultCommandPublisher(get(), get()) }
+    // outbound relay (outbox -> SNS)
+    single { OutboxRelay(get(), get(), get()) }
 
-    // pubsub consumers
-    single { EventConsumerWorker(get(), get(), get()) }
-    single { CommandConsumerWorker(get(), get(), get()) }
+    // inbound consumer (SQS -> dispatcher)
+    single { InboundEventConsumer(get(), get(), get(), get()) }
 
     // scheduled tasks
-    single { CommandProcessorTask(get()) } bind ScheduledTask::class
-    single { EventProcessorTask(get()) } bind ScheduledTask::class
+    single { OutboxRelayTask(get()) } bind ScheduledTask::class
     single { ScheduledTaskRunner(getAll()) }
 }
-

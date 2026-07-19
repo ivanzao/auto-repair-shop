@@ -56,5 +56,8 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.exposed.core)
     testImplementation(libs.mockk)
+    testImplementation(libs.cucumber.java)
+    testImplementation(libs.cucumber.junit.platform.engine)
+    testImplementation(libs.junit.platform.suite)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

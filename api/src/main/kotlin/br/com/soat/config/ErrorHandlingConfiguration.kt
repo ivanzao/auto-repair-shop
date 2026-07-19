@@ -8,7 +8,6 @@ import br.com.soat.shared.dto.FieldError
 import br.com.soat.shared.dto.ValidationErrorDTO
 import br.com.soat.shared.dto.toErrorResponseDTO
 import br.com.soat.shared.exception.ApplicationException
-import br.com.soat.supply.exception.SupplyNotFoundException
 import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.vehicle.exception.VehicleNotFoundException
 import com.fasterxml.jackson.databind.JsonMappingException
@@ -39,7 +38,6 @@ fun Application.configureErrorHandling() {
 
                 is OrderNotFoundException,
                 is ServiceNotFoundException,
-                is SupplyNotFoundException,
                 is CustomerNotFoundException,
                 is VehicleNotFoundException -> NotFound to cause.toErrorResponseDTO()
 

@@ -40,10 +40,8 @@ class OrderPostgresRepository(
 
         val statusPriority = Case()
             .When(Orders.status eq stringLiteral(Order.Status.IN_PROGRESS.name), intLiteral(1))
-            .When(Orders.status eq stringLiteral(Order.Status.WAITING_APPROVAL.name), intLiteral(2))
-            .When(Orders.status eq stringLiteral(Order.Status.IN_DIAGNOSIS.name), intLiteral(3))
-            .When(Orders.status eq stringLiteral(Order.Status.RECEIVED.name), intLiteral(4))
-            .Else(intLiteral(5))
+            .When(Orders.status eq stringLiteral(Order.Status.RECEIVED.name), intLiteral(2))
+            .Else(intLiteral(3))
 
         val orderRows = Orders
             .join(Customers, JoinType.INNER, Orders.customerId, Customers.id)
