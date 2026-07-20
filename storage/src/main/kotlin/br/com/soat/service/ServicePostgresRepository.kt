@@ -2,7 +2,7 @@ package br.com.soat.service
 
 import br.com.soat.service.model.Service
 import br.com.soat.service.repository.ServiceRepository
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

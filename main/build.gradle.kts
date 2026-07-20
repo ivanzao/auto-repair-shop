@@ -29,6 +29,8 @@ dependencies {
     implementation(project(":api"))
     implementation(project(":storage"))
     implementation(project(":worker"))
+    implementation(project(":consumer"))
+    implementation(project(":producer"))
     implementation(project(":metric"))
 
     implementation(libs.kotlinx.coroutines.core)
@@ -56,5 +58,8 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.exposed.core)
     testImplementation(libs.mockk)
+    testImplementation(libs.cucumber.java)
+    testImplementation(libs.cucumber.junit.platform.engine)
+    testImplementation(libs.junit.platform.suite)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

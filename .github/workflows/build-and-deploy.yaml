@@ -98,12 +98,14 @@ jobs:
         run: |
           CLUSTER=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/eks/cluster-name --query Parameter.Value --output text)
           DB_SECRET_ARN=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/db/secret-arn --query Parameter.Value --output text)
-          SNS_TOPIC=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/sns/events-topic-arn --query Parameter.Value --output text)
+          SNS_TOPIC=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/sns/order-events-topic-arn --query Parameter.Value --output text)
+          QUEUE_URL=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/sqs/order-saga-queue-url --query Parameter.Value --output text)
           APIGW=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/apigw/endpoint --query Parameter.Value --output text)
           {
             echo "cluster=$CLUSTER"
             echo "db_secret_arn=$DB_SECRET_ARN"
             echo "sns_topic=$SNS_TOPIC"
+            echo "queue_url=$QUEUE_URL"
             echo "apigw_endpoint=$APIGW"
           } >> "$GITHUB_OUTPUT"
 
@@ -156,6 +158,7 @@ jobs:
             DATABASE_URL: "jdbc:postgresql://${{ steps.db.outputs.host }}:${{ steps.db.outputs.port }}/${{ steps.db.outputs.name }}"
             DATABASE_USERNAME: "${{ steps.db.outputs.user }}"
             SNS_TOPIC_ARN: "${{ steps.ssm.outputs.sns_topic }}"
+            SQS_QUEUE_URL: "${{ steps.ssm.outputs.queue_url }}"
           EOF
 
       - name: Set image tag in overlay

@@ -1,6 +1,7 @@
 package br.com.soat.attendant
 
 import br.com.soat.attendant.model.Attendant
+import br.com.soat.attendant.repository.AttendantRepository
 import br.com.soat.exception.OptimisticLockException
 import br.com.soat.shared.vo.Document
 import java.util.UUID

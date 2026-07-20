@@ -1,14 +1,10 @@
 package br.com.soat.order
 
 import br.com.soat.order.dto.CreateOrderRequestDTO
-import br.com.soat.order.dto.FinishOrderDiagnosisRequestDTO
 import br.com.soat.order.dto.OrderMetricsResponseDTO
 import br.com.soat.order.dto.OrderResponseDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.OrderStatusResponseDTO
-import br.com.soat.order.dto.StartOrderDiagnosisRequestDTO
-import br.com.soat.order.model.request.FinishOrderDiagnosisRequest
-import br.com.soat.order.model.request.StartOrderDiagnosisRequest
 import br.com.soat.auth.JwtUserPrincipal
 import br.com.soat.shared.dto.PageResponseDTO
 import io.ktor.http.HttpStatusCode
@@ -21,7 +17,6 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import br.com.soat.shared.getUUIDPathParameter
-import br.com.soat.shared.getUUIDQueryParameter
 import io.ktor.server.routing.routing
 import org.koin.core.Koin
 
@@ -30,18 +25,6 @@ fun Application.orderRoutes(koin: Koin) {
 
     routing {
         route("/v1") {
-            get("/orders/quote/approve") {
-                val token = call.getUUIDQueryParameter("token")
-                orderUseCase.approveQuote(token)
-                call.respond(HttpStatusCode.OK)
-            }
-
-            get("/orders/quote/decline") {
-                val token = call.getUUIDQueryParameter("token")
-                orderUseCase.declineQuote(token)
-                call.respond(HttpStatusCode.OK)
-            }
-
             get("/orders/{id}/status") {
                 val id = call.getUUIDPathParameter("id")
                 val order = orderUseCase.findById(id)
@@ -79,39 +62,6 @@ fun Application.orderRoutes(koin: Koin) {
                     )
                 }
 
-                post("/orders/{id}/start-diagnosis") {
-                    val id = call.getUUIDPathParameter("id")
-                    val request = call.receive<StartOrderDiagnosisRequestDTO>()
-                    val createdOrder = orderUseCase.startDiagnosis(
-                        StartOrderDiagnosisRequest(
-                            orderId = id,
-                            technician = request.technician
-                        )
-                    )
-
-                    call.respond(
-                        status = HttpStatusCode.OK,
-                        message = OrderResponseDTO.from(createdOrder)
-                    )
-                }
-
-                post("/orders/{id}/finish-diagnosis") {
-                    val id = call.getUUIDPathParameter("id")
-                    val request = call.receive<FinishOrderDiagnosisRequestDTO>()
-                    val createdOrder = orderUseCase.finishDiagnosis(
-                        FinishOrderDiagnosisRequest(
-                            orderId = id,
-                            servicesIds = request.servicesIds,
-                            extraSupplyRequirements = request.extraSuppliesRequests.map { it.toModel() },
-                        )
-                    )
-
-                    call.respond(
-                        status = HttpStatusCode.OK,
-                        message = OrderResponseDTO.from(createdOrder)
-                    )
-                }
-
                 post("/orders/{id}/schedule-delivery") {
                     val id = call.getUUIDPathParameter("id")
                     val request = call.receive<OrderScheduleVehicleRequestDTO>()
@@ -126,16 +76,6 @@ fun Application.orderRoutes(koin: Koin) {
                     orderUseCase.scheduleVehicleReturn(request.toModel(id))
 
                     call.respond(HttpStatusCode.OK)
-                }
-
-                post("/orders/{id}/complete") {
-                    val id = call.getUUIDPathParameter("id")
-                    val completedOrder = orderUseCase.complete(id)
-
-                    call.respond(
-                        status = HttpStatusCode.OK,
-                        message = OrderResponseDTO.from(completedOrder)
-                    )
                 }
 
                 post("/orders/{id}/deliver") {

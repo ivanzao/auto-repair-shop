@@ -1,11 +1,12 @@
 package br.com.soat.event.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
-interface DomainEvent {
-    val id: UUID
-    val createdAt: LocalDateTime
-    val modifiedAt: LocalDateTime
-    val version: Int
+abstract class DomainEvent(
+    val eventId: UUID = UUID.randomUUID(),
+    val eventVersion: Int = 1,
+    val occurredAt: Instant = Instant.now(),
+) {
+    abstract val eventType: String
 }

@@ -3,6 +3,7 @@ package br.com.soat.vehicle
 import br.com.soat.vehicle.exception.VehicleNotFoundException
 import br.com.soat.vehicle.model.CreateVehicleRequest
 import br.com.soat.vehicle.model.Vehicle
+import br.com.soat.vehicle.repository.VehicleRepository
 import java.util.UUID
 
 class VehicleUseCase(

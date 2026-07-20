@@ -18,4 +18,10 @@ security:
 
 sns:
   topic:
-    arn: "arn:aws:sns:us-east-1:000000000000:auto-repair-shop-events"
+    # tópico de eventos do order (produz OrderCreated). Em runtime: SNS_TOPIC_ARN (SSM order-events-topic-arn)
+    arn: "arn:aws:sns:us-east-1:000000000000:auto-repair-shop-order-events"
+
+sqs:
+  queue:
+    # fila de eventos de entrada do order (consome billing/execution). Em runtime: SQS_QUEUE_URL (via SSM)
+    url: "http://localhost:4566/000000000000/auto-repair-shop-order-saga"
