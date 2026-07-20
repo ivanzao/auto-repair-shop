@@ -3,31 +3,33 @@ package br.com.soat
 import br.com.soat.config.Config
 import br.com.soat.config.fromClasspath
 import br.com.soat.attendant.AttendantPostgresRepository
-import br.com.soat.attendant.AttendantRepository
+import br.com.soat.attendant.repository.AttendantRepository
 import br.com.soat.attendant.AttendantUseCase
 import br.com.soat.consumer.InboundEventConsumer
 import br.com.soat.customer.CustomerPostgresRepository
-import br.com.soat.customer.CustomerRepository
+import br.com.soat.customer.repository.CustomerRepository
 import br.com.soat.customer.CustomerUseCase
-import br.com.soat.event.InboundEventDispatcher
-import br.com.soat.event.InboundEventHandler
+import br.com.soat.consumer.InboundEventHandler
+import br.com.soat.consumer.MessageQueue
+import br.com.soat.consumer.SqsClient
+import br.com.soat.event.EventPublisher
 import br.com.soat.event.OutboxEventPostgresRepository
-import br.com.soat.event.OutboxRepository
-import br.com.soat.event.ProcessedEventPostgresStore
-import br.com.soat.event.ProcessedEventStore
-import br.com.soat.messaging.MessageQueue
-import br.com.soat.messaging.OutboxRelay
-import br.com.soat.messaging.SnsClient
-import br.com.soat.messaging.SqsClient
+import br.com.soat.event.repository.OutboxRepository
+import br.com.soat.idempotency.IdempotencyPostgresRepository
+import br.com.soat.producer.EventEnvelopeSerializer
+import br.com.soat.producer.OutboxRelay
+import br.com.soat.producer.SnsClient
+import br.com.soat.producer.SnsEventPublisher
+import br.com.soat.shared.repository.IdempotencyRepository
 import br.com.soat.order.OrderExecutionMetricPostgresRepository
 import br.com.soat.order.OrderPostgresRepository
 import br.com.soat.order.OrderSchedulePostgresRepository
-import br.com.soat.order.OrderStatusUseCase
+import br.com.soat.order.OrderListenerUseCase
 import br.com.soat.order.OrderUseCase
-import br.com.soat.order.event.handler.ExecutionFinishedHandler
-import br.com.soat.order.event.handler.ExecutionProgressHandler
-import br.com.soat.order.event.handler.OrderCancellationHandler
-import br.com.soat.order.event.handler.PaymentConfirmedHandler
+import br.com.soat.consumer.handler.ExecutionFinishedHandler
+import br.com.soat.consumer.handler.ExecutionProgressHandler
+import br.com.soat.consumer.handler.OrderCancellationHandler
+import br.com.soat.consumer.handler.PaymentConfirmedHandler
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
@@ -40,11 +42,11 @@ import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
 import br.com.soat.transaction.PostgresTransactionHandler
 import br.com.soat.vehicle.VehiclePostgresRepository
-import br.com.soat.vehicle.VehicleRepository
+import br.com.soat.vehicle.repository.VehicleRepository
 import br.com.soat.vehicle.VehicleUseCase
 import br.com.soat.config.prometheusMeterRegistry
-import br.com.soat.metric.MetricsPort
-import br.com.soat.metric.MicrometerMetricsPort
+import br.com.soat.metric.MicrometerOrderMetrics
+import br.com.soat.order.OrderMetricsPort
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -85,18 +87,15 @@ fun main() {
 }
 
 val applicationModule = module {
-    //config
     single<Config> { Config.fromClasspath("application.yaml") }
     single<Clock> { Clock.systemUTC() }
     single<CoroutineDispatcher> { Dispatchers.IO }
     single<ObjectMapper> { jacksonObjectMapper().registerModule(JavaTimeModule()) }
 
-    // observability
     single<PrometheusMeterRegistry> { prometheusMeterRegistry() }
     single<MeterRegistry> { get<PrometheusMeterRegistry>() }
-    single<MetricsPort> { MicrometerMetricsPort(get<MeterRegistry>()) }
+    single<OrderMetricsPort> { MicrometerOrderMetrics(get<MeterRegistry>()) }
 
-    // messaging
     single {
         val cfg = get<Config>()
         SnsClient(
@@ -108,7 +107,6 @@ val applicationModule = module {
         )
     }
 
-    // storage
     single<AttendantRepository> { AttendantPostgresRepository() }
     single<VehicleRepository> { VehiclePostgresRepository() }
     single<CustomerRepository> { CustomerPostgresRepository() }
@@ -117,24 +115,21 @@ val applicationModule = module {
     single<OrderScheduleRepository> { OrderSchedulePostgresRepository() }
     single<OrderExecutionMetricRepository> { OrderExecutionMetricPostgresRepository() }
     single<OutboxRepository> { OutboxEventPostgresRepository() }
-    single<ProcessedEventStore> { ProcessedEventPostgresStore() }
+    single<IdempotencyRepository> { IdempotencyPostgresRepository() }
     single<RepositoryTransactionHandler> { PostgresTransactionHandler() }
 
-    // domain
     single<AttendantUseCase> { AttendantUseCase(get()) }
     single<ServiceUseCase> { ServiceUseCase(get()) }
     single<VehicleUseCase> { VehicleUseCase(get()) }
     single<CustomerUseCase> { CustomerUseCase(get()) }
     single<OrderUseCase> { OrderUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { OrderStatusUseCase(get(), get()) }
+    single { OrderListenerUseCase(get(), get(), get(), get()) }
 
-    // inbound event handlers (billing/execution -> order status)
     single { PaymentConfirmedHandler(get()) } bind InboundEventHandler::class
     single { ExecutionFinishedHandler(get()) } bind InboundEventHandler::class
     single { OrderCancellationHandler(get()) } bind InboundEventHandler::class
     single { ExecutionProgressHandler(get()) } bind InboundEventHandler::class
 
-    // inbound queue (SQS)
     single<MessageQueue> {
         val cfg = get<Config>()
         SqsClient(
@@ -146,16 +141,12 @@ val applicationModule = module {
         )
     }
 
-    // event dispatch (inbound)
-    single { InboundEventDispatcher(get(), getAll<InboundEventHandler>()) }
+    single { EventEnvelopeSerializer(get()) }
+    single<EventPublisher> { SnsEventPublisher(get(), get<SnsClient>(), get()) }
+    single { OutboxRelay(get(), get()) }
 
-    // outbound relay (outbox -> SNS)
-    single { OutboxRelay(get(), get(), get()) }
+    single { InboundEventConsumer(get(), getAll<InboundEventHandler>(), get(), get()) }
 
-    // inbound consumer (SQS -> dispatcher)
-    single { InboundEventConsumer(get(), get(), get(), get()) }
-
-    // scheduled tasks
     single { OutboxRelayTask(get()) } bind ScheduledTask::class
     single { ScheduledTaskRunner(getAll()) }
 }

@@ -1,6 +1,7 @@
 package br.com.soat.customer
 
 import br.com.soat.IntegrationTest
+import br.com.soat.customer.repository.CustomerRepository
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals

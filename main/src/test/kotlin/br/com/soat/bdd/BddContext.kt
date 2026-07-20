@@ -29,12 +29,6 @@ import org.testcontainers.containers.localstack.LocalStackContainer.Service.SNS
 import org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS
 import org.testcontainers.utility.DockerImageName
 
-/**
- * Infra compartilhada do BDD: sobe Postgres + LocalStack e o app uma única vez.
- * O relay e o consumidor são acionados de forma síncrona (sem schedulers) para
- * cenários determinísticos. billing/execution são simulados publicando envelopes
- * direto na fila de entrada.
- */
 object BddContext {
 
     private val postgres = PostgreSQLContainer("postgres:18.1").withReuse(true)
@@ -82,8 +76,6 @@ object BddContext {
             put("aws.secretAccessKey", localstack.secretKey)
         }
         connectToDatabase(config)
-        // KoinApplication isolado (não global) para não colidir com o startKoin
-        // dos demais testes de integração que rodam no mesmo JVM.
         koin = koinApplication { modules(applicationModule, module { single<Config> { config } }) }
         started = true
     }
@@ -107,14 +99,12 @@ object BddContext {
         }
     }
 
-    /** Simula billing/execution publicando um envelope na fila de entrada do order. */
     fun sendInbound(envelopeJson: String) {
         runBlocking {
             sqs.sendMessage(SendMessageRequest { queueUrl = inboundQueueUrl; messageBody = envelopeJson })
         }
     }
 
-    /** Recebe um envelope publicado no tópico de eventos do order (via fila espiã). */
     fun receiveFromTopic(mapper: com.fasterxml.jackson.databind.ObjectMapper, timeoutMs: Long = 5000): JsonNode? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {

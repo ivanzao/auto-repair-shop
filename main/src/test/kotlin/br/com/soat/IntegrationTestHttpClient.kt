@@ -36,8 +36,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         .registerKotlinModule()
         .registerModule(JavaTimeModule())
 
-    // ==================== ORDER ====================
-
     fun listOrders(authHeaders: Map<String, String>, page: Int = 1): HttpResponse<String> {
         return get("/v1/orders?page=$page", authHeaders)
     }
@@ -77,8 +75,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    // ==================== ATTENDANT ====================
-
     fun createAttendant(dto: CreateAttendantRequestDTO, authHeaders: Map<String, String>): HttpResponse<AttendantResponseDTO> {
         val body = mapper.writeValueAsString(dto)
         val response = post("/v1/attendants", body, authHeaders)
@@ -102,8 +98,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return delete("/v1/attendants/$attendantId", authHeaders)
     }
 
-    // ==================== CUSTOMER ====================
-
     fun createCustomer(dto: CreateCustomerRequestDTO, authHeaders: Map<String, String>): HttpResponse<CustomerResponseDTO> {
         val body = mapper.writeValueAsString(dto)
         val response = post("/v1/customers", body, authHeaders)
@@ -123,8 +117,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return delete("/v1/customers/$customerId", authHeaders)
     }
 
-    // ==================== VEHICLE ====================
-
     fun createVehicle(dto: CreateVehicleRequestDTO, authHeaders: Map<String, String>): HttpResponse<VehicleResponseDTO> {
         val body = mapper.writeValueAsString(dto)
         val response = post("/v1/vehicles", body, authHeaders)
@@ -143,8 +135,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
     fun deleteVehicle(vehicleId: String, authHeaders: Map<String, String>): HttpResponse<String> {
         return delete("/v1/vehicles/$vehicleId", authHeaders)
     }
-
-    // ==================== SERVICE ====================
 
     fun createService(dto: CreateServiceRequestDTO, authHeaders: Map<String, String>): HttpResponse<ServiceResponseDTO> {
         val body = mapper.writeValueAsString(dto)
@@ -168,8 +158,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
     fun deleteService(serviceId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
         return delete("/v1/services/$serviceId", authHeaders)
     }
-
-    // ==================== HTTP METHODS ====================
 
     private fun post(path: String, body: String, authHeaders: Map<String, String> = emptyMap()): HttpResponse<String> {
         val builder = HttpRequest.newBuilder()

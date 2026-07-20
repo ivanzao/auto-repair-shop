@@ -1,12 +1,13 @@
 package br.com.soat.order
 
 import br.com.soat.customer.Customers
+import br.com.soat.exception.OptimisticLockException
 import br.com.soat.order.model.Order
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.service.Services
 import br.com.soat.shared.model.Page
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import br.com.soat.vehicle.Vehicles
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -127,12 +128,18 @@ class OrderPostgresRepository(
     }
 
     override fun update(order: Order): Order = transaction {
-        Orders.update({ (Orders.id eq order.id) and (Orders.version eq order.version) }) {
+        val rows = Orders.update({ (Orders.id eq order.id) and (Orders.version eq order.version) }) {
             it[Orders.modifiedAt] = order.modifiedAt.toKotlinLocalDateTime()
             it[Orders.version] = order.version + 1
             it[Orders.status] = order.status.name
             it[Orders.description] = order.description
             it[Orders.technician] = order.technician
+        }
+
+        if (rows == 0) {
+            throw OptimisticLockException(
+                "Order ${order.id} was modified by another transaction (expected version ${order.version})"
+            )
         }
 
         OrderServices.deleteWhere { OrderServices.orderId eq order.id }

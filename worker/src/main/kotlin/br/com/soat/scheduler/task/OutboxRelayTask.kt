@@ -1,6 +1,6 @@
 package br.com.soat.scheduler.task
 
-import br.com.soat.messaging.OutboxRelay
+import br.com.soat.producer.OutboxRelay
 import br.com.soat.scheduler.ScheduledTask
 import org.slf4j.LoggerFactory
 

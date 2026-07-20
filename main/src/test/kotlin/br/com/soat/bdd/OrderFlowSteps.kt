@@ -1,11 +1,10 @@
 package br.com.soat.bdd
 
-import br.com.soat.attendant.AttendantRepository
+import br.com.soat.attendant.repository.AttendantRepository
 import br.com.soat.attendant.model.Attendant
 import br.com.soat.consumer.InboundEventConsumer
-import br.com.soat.customer.CustomerRepository
+import br.com.soat.customer.repository.CustomerRepository
 import br.com.soat.customer.model.Customer
-import br.com.soat.messaging.OutboxRelay
 import br.com.soat.order.OrderUseCase
 import br.com.soat.order.model.request.CreateOrderRequest
 import br.com.soat.order.repository.OrderRepository
@@ -15,7 +14,7 @@ import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.PhoneNumber
 import br.com.soat.shared.vo.VehiclePlate
-import br.com.soat.vehicle.VehicleRepository
+import br.com.soat.vehicle.repository.VehicleRepository
 import br.com.soat.vehicle.model.Vehicle
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.cucumber.java.Before
@@ -66,7 +65,6 @@ class OrderFlowSteps {
 
     @Entao("o evento {string} é publicado no tópico de eventos do order")
     fun eventoPublicado(eventType: String) {
-        BddContext.get<OutboxRelay>().relayPending()
         val envelope = BddContext.receiveFromTopic(mapper)
         assertNotNull(envelope, "nenhum evento publicado no tópico")
         assertEquals(eventType, envelope!!["eventType"].asText())
@@ -88,7 +86,7 @@ class OrderFlowSteps {
 
     private fun injetar(eventType: String) {
         BddContext.sendInbound(envelopeFor(eventType))
-        BddContext.get<InboundEventConsumer>().pollOnce()
+        BddContext.get<InboundEventConsumer>().poll()
     }
 
     private fun envelopeFor(eventType: String): String {

@@ -18,11 +18,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
-/**
- * REST-only lifecycle owned by the order service. As transições dirigidas por
- * eventos (IN_PROGRESS/COMPLETED/CANCELED) chegam de billing/execution e são
- * cobertas nos testes de OrderStatusUseCase (unitários) e no fluxo BDD Cucumber.
- */
 class OrderLifecycleIntegrationTest : IntegrationTest() {
 
     private val orderRepository: OrderRepository by lazy { get<OrderRepository>() }

@@ -1,7 +1,7 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
-import br.com.soat.attendant.AttendantRepository
+import br.com.soat.attendant.repository.AttendantRepository
 import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.model.Order
@@ -27,7 +27,6 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
         val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
 
-        // Create orders in each status
         val receivedOrder = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, attendant.id, baseTime)
         val inProgressOrder = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, attendant.id, baseTime.plusHours(3))
         createOrderWithStatus(Order.Status.COMPLETED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(4))
@@ -40,7 +39,6 @@ class OrderListingIntegrationTest : IntegrationTest() {
         val body = mapper.readValue<Map<String, Any>>(response.body())
         val content = body["content"] as List<*>
 
-        // Should only have the active orders (IN_PROGRESS, RECEIVED)
         assertEquals(2, content.size)
 
         val orderIds = content.map { (it as Map<*, *>)["id"] as String }
@@ -62,7 +60,6 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
         val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
 
-        // Create multiple orders with same status but different dates
         val received1 = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(2))
         val received2 = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(1))
         val inProgress1 = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, attendant.id, baseTime.plusHours(4))
@@ -78,7 +75,6 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
         val orderIds = content.map { (it as Map<*, *>)["id"] as String }
 
-        // Expected order: IN_PROGRESS (oldest first), then RECEIVED (oldest first)
         assertEquals(
             listOf(
                 inProgress2.id.toString(),   // IN_PROGRESS, earlier
@@ -97,8 +93,8 @@ class OrderListingIntegrationTest : IntegrationTest() {
         attendantId: java.util.UUID,
         createdAt: LocalDateTime
     ): Order {
-        val customer = get<br.com.soat.customer.CustomerRepository>().findById(customerId)!!
-        val vehicle = get<br.com.soat.vehicle.VehicleRepository>().findById(vehicleId)!!
+        val customer = get<br.com.soat.customer.repository.CustomerRepository>().findById(customerId)!!
+        val vehicle = get<br.com.soat.vehicle.repository.VehicleRepository>().findById(vehicleId)!!
 
         val order = Order(
             createdAt = createdAt,

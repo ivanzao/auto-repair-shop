@@ -29,6 +29,8 @@ dependencies {
     implementation(project(":api"))
     implementation(project(":storage"))
     implementation(project(":worker"))
+    implementation(project(":consumer"))
+    implementation(project(":producer"))
     implementation(project(":metric"))
 
     implementation(libs.kotlinx.coroutines.core)

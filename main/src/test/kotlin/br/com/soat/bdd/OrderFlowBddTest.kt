@@ -6,10 +6,6 @@ import org.junit.platform.suite.api.IncludeEngines
 import org.junit.platform.suite.api.SelectClasspathResource
 import org.junit.platform.suite.api.Suite
 
-/**
- * Roda o fluxo BDD (Cucumber) como uma suíte JUnit Platform. O nome termina em
- * `IntegrationTest` para ser incluído na task `integrationTest`.
- */
 @Suite
 @IncludeEngines("cucumber")
 @SelectClasspathResource("features")

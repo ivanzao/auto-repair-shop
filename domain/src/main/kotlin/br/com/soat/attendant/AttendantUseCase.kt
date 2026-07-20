@@ -5,6 +5,7 @@ import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.attendant.model.Attendant
 import br.com.soat.attendant.model.CreateAttendantRequest
 import br.com.soat.attendant.model.UpdateAttendantRequest
+import br.com.soat.attendant.repository.AttendantRepository
 import java.util.UUID
 
 class AttendantUseCase(

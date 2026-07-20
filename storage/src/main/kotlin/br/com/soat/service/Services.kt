@@ -1,7 +1,7 @@
 package br.com.soat.service
 
 import br.com.soat.service.model.Service
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table

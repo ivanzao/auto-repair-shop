@@ -1,6 +1,7 @@
 package br.com.soat.vehicle
 
 import br.com.soat.vehicle.model.Vehicle
+import br.com.soat.vehicle.repository.VehicleRepository
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

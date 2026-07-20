@@ -10,7 +10,6 @@ object Events : Table("events") {
     val version = integer("version").default(0)
 
     val type = varchar("type", 255)
-    val status = varchar("status", 50)
     val payload = text("payload")
 
     init {

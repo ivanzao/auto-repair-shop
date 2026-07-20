@@ -9,11 +9,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
-/**
- * Cobre o comportamento transacional do [RepositoryTransactionHandler] usando o
- * catálogo de serviços (que permanece no order). O estoque de peças saiu para o
- * execution, então a cobertura de rollback/commit passou a usar o preço do serviço.
- */
 class TransactionRollbackIntegrationTest : IntegrationTest() {
 
     private fun newService(name: String, price: BigDecimal): Service {

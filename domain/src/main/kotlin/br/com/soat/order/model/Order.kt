@@ -3,7 +3,7 @@ package br.com.soat.order.model
 import br.com.soat.customer.model.Customer
 import br.com.soat.order.exception.IllegalOrderStateException
 import br.com.soat.service.model.Service
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
 import java.time.LocalDateTime.now
@@ -28,23 +28,15 @@ data class Order(
     val technician: String? = null,
 ) {
 
-    /** Pagamento confirmado: RECEIVED → IN_PROGRESS. Idempotente (no-op fora de RECEIVED). */
-    fun markInProgress(): Order =
+    fun inProgress(): Order =
         if (status == Status.RECEIVED) copy(status = Status.IN_PROGRESS, modifiedAt = now()) else this
 
-    /** Execução concluída: IN_PROGRESS → COMPLETED. Idempotente (no-op fora de IN_PROGRESS). */
-    fun markCompleted(): Order =
+    fun completed(): Order =
         if (status == Status.IN_PROGRESS) copy(status = Status.COMPLETED, modifiedAt = now()) else this
 
-    /**
-     * Compensação: cancela a OS em qualquer estado não-terminal. `COMPLETED` é
-     * terminal — `ExecutionFailed` compensa durante a execução (OS IN_PROGRESS),
-     * antes da conclusão, então nunca cancela uma OS já concluída. Idempotente.
-     */
-    fun markCanceled(): Order =
+    fun canceled(): Order =
         if (status in TERMINAL) this else copy(status = Status.CANCELED, modifiedAt = now())
 
-    /** Entrega manual do veículo (REST): COMPLETED → DELIVERED. */
     fun delivered(): Order {
         if (status != Status.COMPLETED)
             throw IllegalOrderStateException("Order must be COMPLETED. Current status: $status")

@@ -63,7 +63,6 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             completedAt = LocalDateTime.of(2024, 1, 2, 10, 3, 20) // 200 seconds later
         )
 
-        // Order 3: 300 seconds
         val metric3 = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order3Id,
@@ -79,7 +78,6 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
 
         assertEquals(200, response.statusCode())
         assertEquals(3, response.body().totalCompleted)
-        // Average: (100 + 200 + 300) / 3 = 200 seconds
         assertEquals(200, response.body().averageExecutionTimeSeconds)
     }
 

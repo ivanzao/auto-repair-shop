@@ -1,18 +1,17 @@
 package br.com.soat.order
 
-import br.com.soat.customer.CustomerRepository
+import br.com.soat.customer.repository.CustomerRepository
 import br.com.soat.customer.exception.CustomerNotFoundException
-import br.com.soat.event.EventType
-import br.com.soat.event.OutboxEvent
-import br.com.soat.event.OutboxRepository
-import br.com.soat.order.event.OrderCreatedPayload
+import br.com.soat.event.EventPublisher
+import br.com.soat.event.repository.OutboxRepository
+import br.com.soat.order.event.OrderCreatedEvent
 import br.com.soat.order.exception.IllegalOrderCommandException
 import br.com.soat.order.exception.OrderNotFoundException
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderMetrics
 import br.com.soat.order.model.OrderSchedule
+import br.com.soat.order.model.logParams
 import br.com.soat.order.exception.ServiceNotFoundException
-import com.fasterxml.jackson.databind.ObjectMapper
 import br.com.soat.order.model.request.CreateOrderRequest
 import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
 import br.com.soat.order.repository.OrderExecutionMetricRepository
@@ -22,11 +21,10 @@ import br.com.soat.service.model.Service
 import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.model.Page
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.attendant.AttendantRepository
+import br.com.soat.attendant.repository.AttendantRepository
 import br.com.soat.attendant.exception.AttendantNotFoundException
-import br.com.soat.vehicle.VehicleRepository
+import br.com.soat.vehicle.repository.VehicleRepository
 import br.com.soat.vehicle.exception.VehicleNotFoundException
-import br.com.soat.metric.MetricsPort
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
@@ -43,26 +41,12 @@ class OrderUseCase(
     private val outbox: OutboxRepository,
     private val orderScheduleRepository: OrderScheduleRepository,
     private val orderExecutionMetricRepository: OrderExecutionMetricRepository,
-    private val mapper: ObjectMapper,
+    private val eventPublisher: EventPublisher,
     private val tx: RepositoryTransactionHandler,
-    metrics: MetricsPort,
+    private val metrics: OrderMetricsPort,
 ) {
 
     private val logger = LoggerFactory.getLogger(OrderUseCase::class.java)
-
-    private val ordersCreated: MetricsPort.Counter = metrics.counter(
-        name = "orders_created_total",
-        description = "Total de ordens de serviço criadas",
-    )
-
-    private val ordersByStatus: Map<Order.Status, MetricsPort.Counter> =
-        Order.Status.entries.associateWith { status ->
-            metrics.counter(
-                name = "orders_by_status_total",
-                description = "Total de transições de ordens de serviço para cada status",
-                tags = mapOf("status" to status.name),
-            )
-        }
 
     fun findById(orderId: UUID) = orderRepository.findById(orderId)
     fun findAll(page: Int): Page<Order> = orderRepository.findAllPaginated(page)
@@ -89,27 +73,14 @@ class OrderUseCase(
         ).addServices(services)
             .addSupplyRequirements(request.extraSupplyRequirements)
 
-        val created = tx.inTransaction {
+        val (created, event) = tx.inTransaction {
             val saved = orderRepository.create(order)
-            outbox.save(
-                OutboxEvent(
-                    eventType = EventType.ORDER_CREATED,
-                    payload = mapper.writeValueAsString(OrderCreatedPayload.from(saved)),
-                )
-            )
-            saved
+            saved to outbox.save(OrderCreatedEvent.from(saved))
         }
-        ordersCreated.increment()
-        ordersByStatus[created.status]?.increment()
-        logger.info(
-            "Order created",
-            kv("event", "order.created"),
-            kv("orderId", created.id),
-            kv("customerId", customer.id),
-            kv("vehicleId", vehicle.id),
-            kv("attendantId", attendant.id),
-            kv("to_status", created.status.name),
-        )
+        eventPublisher.publish(event)
+        metrics.orderCreated()
+        metrics.statusChanged(created.status)
+        logger.info("Order created", *created.logParams(kv("event", "order.created")))
         return created
     }
 
@@ -150,14 +121,14 @@ class OrderUseCase(
         val previousStatus = order.status
         val durationInPrevious = Duration.between(order.modifiedAt, LocalDateTime.now())
         val delivered = orderRepository.update(order.delivered())
-        ordersByStatus[delivered.status]?.increment()
+        metrics.statusChanged(delivered.status)
         logger.info(
             "Order delivered",
-            kv("event", "order.status_changed"),
-            kv("orderId", delivered.id),
-            kv("from_status", previousStatus.name),
-            kv("to_status", delivered.status.name),
-            kv("duration_in_previous_seconds", durationInPrevious.seconds),
+            *delivered.logParams(
+                kv("event", "order.status_changed"),
+                kv("from_status", previousStatus.name),
+                kv("duration_in_previous_seconds", durationInPrevious.seconds),
+            ),
         )
         return delivered
     }

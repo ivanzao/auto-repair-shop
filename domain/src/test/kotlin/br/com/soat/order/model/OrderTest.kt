@@ -7,7 +7,7 @@ import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.PhoneNumber
 import br.com.soat.shared.vo.VehiclePlate
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import br.com.soat.vehicle.model.Vehicle
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -45,47 +45,39 @@ class OrderTest {
         status = status
     )
 
-    // ---------- markInProgress ----------
-
     @Test
-    fun `markInProgress moves RECEIVED to IN_PROGRESS`() {
-        assertEquals(Order.Status.IN_PROGRESS, createOrder(Order.Status.RECEIVED).markInProgress().status)
+    fun `inProgress moves RECEIVED to IN_PROGRESS`() {
+        assertEquals(Order.Status.IN_PROGRESS, createOrder(Order.Status.RECEIVED).inProgress().status)
     }
 
     @Test
-    fun `markInProgress is a no-op outside RECEIVED`() {
+    fun `inProgress is a no-op outside RECEIVED`() {
         listOf(Order.Status.IN_PROGRESS, Order.Status.COMPLETED, Order.Status.DELIVERED, Order.Status.CANCELED)
-            .forEach { assertEquals(it, createOrder(it).markInProgress().status) }
-    }
-
-    // ---------- markCompleted ----------
-
-    @Test
-    fun `markCompleted moves IN_PROGRESS to COMPLETED`() {
-        assertEquals(Order.Status.COMPLETED, createOrder(Order.Status.IN_PROGRESS).markCompleted().status)
+            .forEach { assertEquals(it, createOrder(it).inProgress().status) }
     }
 
     @Test
-    fun `markCompleted is a no-op outside IN_PROGRESS`() {
+    fun `completed moves IN_PROGRESS to COMPLETED`() {
+        assertEquals(Order.Status.COMPLETED, createOrder(Order.Status.IN_PROGRESS).completed().status)
+    }
+
+    @Test
+    fun `completed is a no-op outside IN_PROGRESS`() {
         listOf(Order.Status.RECEIVED, Order.Status.COMPLETED, Order.Status.DELIVERED, Order.Status.CANCELED)
-            .forEach { assertEquals(it, createOrder(it).markCompleted().status) }
+            .forEach { assertEquals(it, createOrder(it).completed().status) }
     }
 
-    // ---------- markCanceled ----------
-
     @Test
-    fun `markCanceled cancels a non-terminal order`() {
+    fun `canceled cancels a non-terminal order`() {
         listOf(Order.Status.RECEIVED, Order.Status.IN_PROGRESS)
-            .forEach { assertEquals(Order.Status.CANCELED, createOrder(it).markCanceled().status) }
+            .forEach { assertEquals(Order.Status.CANCELED, createOrder(it).canceled().status) }
     }
 
     @Test
-    fun `markCanceled is a no-op on terminal states`() {
+    fun `canceled is a no-op on terminal states`() {
         listOf(Order.Status.COMPLETED, Order.Status.DELIVERED, Order.Status.CANCELED)
-            .forEach { assertEquals(it, createOrder(it).markCanceled().status) }
+            .forEach { assertEquals(it, createOrder(it).canceled().status) }
     }
-
-    // ---------- delivered (manual REST) ----------
 
     @Test
     fun `delivered moves COMPLETED to DELIVERED`() {
@@ -104,12 +96,10 @@ class OrderTest {
     @Test
     fun `transitions preserve immutability`() {
         val original = createOrder(Order.Status.RECEIVED)
-        val next = original.markInProgress()
+        val next = original.inProgress()
         assertEquals(Order.Status.RECEIVED, original.status)
         assertEquals(Order.Status.IN_PROGRESS, next.status)
     }
-
-    // ---------- services ----------
 
     @Test
     fun `should add services to order`() {
@@ -147,8 +137,6 @@ class OrderTest {
         assertEquals(1, result.services.size)
     }
 
-    // ---------- supply requirements ----------
-
     @Test
     fun `should add supply requirements to order`() {
         val supplyId = UUID.randomUUID()
@@ -185,8 +173,6 @@ class OrderTest {
         assertEquals(10, result[supplyId]?.quantity)
         assertEquals(1, result[other]?.quantity)
     }
-
-    // ---------- scheduling guards ----------
 
     @Test
     fun `canScheduleVehicleDelivery only when RECEIVED`() {
