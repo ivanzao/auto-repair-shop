@@ -135,6 +135,32 @@ Username: app     Password: test
 
 O `bddTest` cobre o fluxo completo (criação → OrderCreated → pagamento → execução → conclusão) e um cenário de compensação (`PartsUnavailable` → `CANCELED`), com billing/execution simulados por eventos na fila do LocalStack (`main/src/test/resources/features/order_flow.feature`).
 
+### Cobertura
+
+| Métrica | Valor |
+|---|---|
+| Cobertura (SonarCloud) | **80.9%** |
+| Testes | 91 |
+| Quality gate | Passed |
+
+Análise a cada PR pelo step `Sonar` do `pr-check.yaml`, no projeto `auto-repair-shop`
+da organização `ivanzao` no SonarCloud. O quality gate exige 80% de cobertura em
+código novo.
+
+Ficam fora da contagem de cobertura o wiring de framework (`config`, `auth`,
+`metric`), o módulo `main` e os DTOs — código sem lógica de negócio própria. Eles
+seguem analisados para bugs, code smells e security hotspots.
+
+Para reproduzir localmente:
+
+```bash
+./gradlew test integrationTest bddTest jacocoAggregatedReport
+# relatório HTML em build/reports/jacoco/jacocoAggregatedReport/html/index.html
+```
+
+<!-- TODO: print do dashboard do SonarCloud (projeto é privado, link exige login) -->
+
+
 ---
 
 ## Load Test (K6)
