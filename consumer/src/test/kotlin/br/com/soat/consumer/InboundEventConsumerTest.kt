@@ -31,6 +31,27 @@ class InboundEventConsumerTest {
         InboundEventConsumer(queue, handlers, mapper, Dispatchers.Unconfined)
 
     @Test
+    fun `continues the trace from the message traceparent inside the handler`() {
+        val traceId = "0af7651916cd43dd8448eb211c80319c"
+        val seen = mutableListOf<String>()
+        val handler = object : InboundEventHandler {
+            override val eventTypes = setOf(EventType.PAYMENT_CONFIRMED)
+            override fun handle(envelope: EventEnvelope) {
+                seen += io.opentelemetry.api.trace.Span.current().spanContext.traceId
+            }
+        }
+        val message = Message(
+            envelopeJson(EventType.PAYMENT_CONFIRMED),
+            "rh-tp",
+            "00-$traceId-b7ad6b7169203331-01",
+        )
+
+        consumer(FakeQueue(listOf(message)), listOf(handler)).poll()
+
+        assertEquals(listOf(traceId), seen)
+    }
+
+    @Test
     fun `fans out to the matching handler and deletes the message`() {
         val handled = mutableListOf<UUID>()
         val handler = object : InboundEventHandler {
