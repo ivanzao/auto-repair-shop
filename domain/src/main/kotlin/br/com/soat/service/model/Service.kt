@@ -1,6 +1,6 @@
 package br.com.soat.service.model
 
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID

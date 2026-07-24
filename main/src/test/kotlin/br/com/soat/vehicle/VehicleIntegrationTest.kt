@@ -1,6 +1,7 @@
 package br.com.soat.vehicle
 
 import br.com.soat.IntegrationTest
+import br.com.soat.vehicle.repository.VehicleRepository
 import br.com.soat.customer.dto.CreateCustomerRequestDTO
 import br.com.soat.vehicle.dto.CreateVehicleRequestDTO
 import java.util.UUID

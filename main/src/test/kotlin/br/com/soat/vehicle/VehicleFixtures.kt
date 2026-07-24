@@ -1,6 +1,7 @@
 package br.com.soat.vehicle
 
 import br.com.soat.IntegrationTest
+import br.com.soat.vehicle.repository.VehicleRepository
 import br.com.soat.shared.vo.VehiclePlate
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime

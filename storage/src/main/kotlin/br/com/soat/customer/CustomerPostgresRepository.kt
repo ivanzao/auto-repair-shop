@@ -1,6 +1,7 @@
 package br.com.soat.customer
 
 import br.com.soat.customer.model.Customer
+import br.com.soat.customer.repository.CustomerRepository
 import java.util.UUID
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

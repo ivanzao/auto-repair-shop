@@ -29,10 +29,10 @@ class ScheduledTaskRunner(
 
         tasks.forEach { task ->
             scheduler.scheduleAtFixedRate(
-                /* command = */ { executeTaskWithLock(task) },
-                /* initialDelay = */ 0,
-                /* period = */ task.getIntervalInSeconds(),
-                /* unit = */ TimeUnit.SECONDS
+                { executeTaskWithLock(task) },
+                0,
+                task.getIntervalInSeconds(),
+                TimeUnit.SECONDS
             )
             logger.info("Scheduled task: ${task.getLockName()} with interval of ${task.getIntervalInSeconds()}s")
         }

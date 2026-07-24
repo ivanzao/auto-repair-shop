@@ -1,96 +1,86 @@
 package br.com.soat.order
 
-import br.com.soat.command.CommandPublisher
-import br.com.soat.command.repository.CommandRepository
-import br.com.soat.order.command.SendQuoteEmailCommand
-import br.com.soat.order.exception.OrderNotFoundException
 import br.com.soat.order.model.Order
-import br.com.soat.order.model.OrderApprovalToken
-import br.com.soat.order.model.OrderExecutionMetric
-import br.com.soat.order.repository.OrderApprovalTokenRepository
-import br.com.soat.order.repository.OrderExecutionMetricRepository
+import br.com.soat.order.model.logParams
 import br.com.soat.order.repository.OrderRepository
+import br.com.soat.shared.repository.IdempotencyRepository
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.supply.repository.SupplyRepository
 import java.math.BigDecimal
-import java.time.LocalDateTime
 import java.util.UUID
+import net.logstash.logback.argument.StructuredArguments.kv
+import org.slf4j.LoggerFactory
 
 class OrderListenerUseCase(
-    private val supplyRepository: SupplyRepository,
     private val orderRepository: OrderRepository,
-    private val commandRepository: CommandRepository,
-    private val commandPublisher: CommandPublisher,
-    private val orderApprovalTokenRepository: OrderApprovalTokenRepository,
-    private val orderExecutionMetricRepository: OrderExecutionMetricRepository,
+    private val idempotency: IdempotencyRepository,
     private val tx: RepositoryTransactionHandler,
+    private val metrics: OrderMetricsPort,
 ) {
+    private val logger = LoggerFactory.getLogger(OrderListenerUseCase::class.java)
 
-    fun sendQuoteToApproval(orderId: UUID) {
-        val order = orderRepository.findById(orderId) ?: throw OrderNotFoundException(orderId)
+    fun confirmPayment(orderId: UUID, amount: BigDecimal?, idempotencyId: UUID) =
+        handleStatusEvent(orderId, "PaymentConfirmed", idempotencyId, kv("amount", amount)) { it.inProgress() }
 
-        val requiredSupplies = order.getSupplyRequirements()
-        val supplies = supplyRepository.findAllByIds(requiredSupplies.map { it.supplyId })
+    fun finishExecution(orderId: UUID, idempotencyId: UUID) =
+        handleStatusEvent(orderId, "ExecutionFinished", idempotencyId) { it.completed() }
 
-        val command = tx.inTransaction {
-            orderRepository.update(order.waitingApproval())
+    fun cancel(orderId: UUID, reason: String, idempotencyId: UUID) =
+        handleStatusEvent(orderId, reason, idempotencyId) { it.canceled() }
 
-            val approvalToken = orderApprovalTokenRepository.save(
-                OrderApprovalToken(
-                    orderId = orderId,
-                    expiresAt = LocalDateTime.now().plusDays(5),
-                )
-            )
-
-            val totalServices = order.services.sumOf { it.price }
-            val totalSupplies = supplies.sumOf {
-                val qty = requiredSupplies.single { req -> req.supplyId == it.id }.quantity
-                it.price * BigDecimal(qty)
-            }
-
-            commandRepository.save(
-                SendQuoteEmailCommand(
-                    orderId = orderId,
-                    callbackToken = approvalToken.id.toString(),
-                    customerEmail = order.customer.email.value,
-                    customerName = order.customer.name,
-                    totalAmount = totalServices + totalSupplies,
-                    services = order.services.map {
-                        SendQuoteEmailCommand.Service(name = it.name, price = it.price)
-                    },
-                    supplies = supplies.map {
-                        SendQuoteEmailCommand.Supply(
-                            name = it.name,
-                            quantity = requiredSupplies.single { req -> req.supplyId == it.id }.quantity,
-                            unitPrice = it.price,
-                        )
-                    },
-                )
-            )
-        }
-
-        commandPublisher.publish(command)
+    fun recordExecutionProgress(orderId: UUID, step: String) {
+        metrics.inboundEventApplied()
+        logger.info(
+            "Order execution progress",
+            kv("event", "order.progress"),
+            kv("orderId", orderId),
+            kv("step", step),
+        )
     }
 
-    fun registerExecutionTimeMetric(orderId: UUID, status: Order.Status) {
-        when (status) {
-            Order.Status.IN_PROGRESS -> {
-                orderExecutionMetricRepository.create(
-                    OrderExecutionMetric(
-                        orderId = orderId,
-                        inProgressAt = LocalDateTime.now(),
-                    )
-                )
-            }
-            Order.Status.COMPLETED -> {
-                val existingMetric = orderExecutionMetricRepository.findByOrderId(orderId)
-                if (existingMetric != null) {
-                    orderExecutionMetricRepository.update(
-                        existingMetric.copy(completedAt = LocalDateTime.now())
-                    )
-                }
-            }
-            else -> {}
+    private fun handleStatusEvent(
+        orderId: UUID,
+        reason: String,
+        idempotencyId: UUID,
+        vararg extra: Any,
+        change: (Order) -> Order,
+    ) {
+        if (idempotency.exists(orderId, idempotencyId)) {
+            logger.info(
+                "Skipping already-processed message",
+                kv("orderId", orderId), kv("idempotencyId", idempotencyId), kv("reason", reason),
+            )
+            return
+        }
+
+        val order = orderRepository.findById(orderId)
+        if (order == null) {
+            logger.warn("Order {} not found while handling {}", orderId, reason)
+            return
+        }
+
+        val updated = change(order)
+        tx.inTransaction {
+            if (updated.status != order.status) orderRepository.update(updated)
+            idempotency.save(orderId, idempotencyId)
+        }
+
+        metrics.inboundEventApplied()
+        if (updated.status != order.status) {
+            metrics.statusChanged(updated.status)
+            logger.info(
+                "Order status changed",
+                *updated.logParams(
+                    kv("event", "order.status_changed"),
+                    kv("from_status", order.status.name),
+                    kv("reason", reason),
+                    *extra,
+                ),
+            )
+        } else {
+            logger.info(
+                "Order status unchanged (out-of-order event)",
+                *order.logParams(kv("reason", reason), *extra),
+            )
         }
     }
 }

@@ -3,6 +3,7 @@ package br.com.soat.customer
 import br.com.soat.customer.exception.CustomerNotFoundException
 import br.com.soat.customer.model.CreateCustomerRequest
 import br.com.soat.customer.model.Customer
+import br.com.soat.customer.repository.CustomerRepository
 import java.util.UUID
 
 class CustomerUseCase(

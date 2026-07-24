@@ -18,12 +18,15 @@ aws-sdk-kotlin = "1.5.13"
 micrometer = "1.13.6"
 logstash-logback = "8.0"
 mockk = "1.14.7"
+cucumber = "7.18.0"
 sonarqube = "5.1.0.4882"
+opentelemetry = "1.43.0"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
 
 # Koin
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
@@ -85,6 +88,10 @@ aws-sdk-kotlin-sqs = { module = "aws.sdk.kotlin:sqs", version.ref = "aws-sdk-kot
 testcontainers-localstack = { module = "org.testcontainers:localstack", version.ref = "testcontainers" }
 
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+cucumber-java = { module = "io.cucumber:cucumber-java", version.ref = "cucumber" }
+cucumber-junit-platform-engine = { module = "io.cucumber:cucumber-junit-platform-engine", version.ref = "cucumber" }
+junit-platform-suite = { module = "org.junit.platform:junit-platform-suite" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

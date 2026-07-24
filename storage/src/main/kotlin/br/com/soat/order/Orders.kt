@@ -5,8 +5,7 @@ import br.com.soat.customer.toCustomer
 import br.com.soat.order.model.Order
 import br.com.soat.service.Services
 import br.com.soat.service.model.Service
-import br.com.soat.supply.Supplies
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import br.com.soat.vehicle.Vehicles
 import br.com.soat.vehicle.toVehicle
 import kotlinx.datetime.toJavaLocalDateTime
@@ -44,7 +43,7 @@ object OrderServices : Table("order_services") {
 
 object OrderSupplies : Table("order_supplies") {
     val orderId = uuid("order_id").references(Orders.id)
-    val supplyId = uuid("supply_id").references(Supplies.id)
+    val supplyId = uuid("supply_id")
     val quantity = integer("quantity")
 
     init {
@@ -54,7 +53,7 @@ object OrderSupplies : Table("order_supplies") {
 
 fun ResultRow.toOrder(
     services: List<Service>,
-    supplies: List<SupplyRequirement>
+    parts: List<SupplyRequirement>
 ) = Order(
     id = this[Orders.id],
     createdAt = this[Orders.createdAt].toJavaLocalDateTime(),
@@ -65,7 +64,7 @@ fun ResultRow.toOrder(
     vehicle = this.toVehicle(),
     attendantId = this[Orders.attendantId],
     services = services,
-    extraSupplies = supplies,
+    extraSupplies = parts,
     description = this[Orders.description],
     technician = this[Orders.technician]
 )

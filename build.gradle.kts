@@ -39,6 +39,7 @@ subprojects {
     tasks.withType<Test> {
         useJUnitPlatform()
         exclude("**/*IntegrationTest.*")
+        exclude("**/*BddTest.*")
     }
 
     tasks.register<Test>("integrationTest") {
@@ -54,6 +55,19 @@ subprojects {
         dependsOn(tasks.named("classes"))
     }
 
+    tasks.register<Test>("bddTest") {
+        useJUnitPlatform()
+        excludes.clear()
+        include("**/*BddTest.*")
+
+        extensions.configure(JacocoTaskExtension::class) {
+            isEnabled = true
+            setDestinationFile(layout.buildDirectory.file("jacoco/bddTest.exec").get().asFile)
+        }
+
+        dependsOn(tasks.named("classes"))
+    }
+
     tasks.named<JacocoReport>("jacocoTestReport") {
         dependsOn(tasks.named("test"))
         enabled = false
@@ -63,6 +77,7 @@ subprojects {
 tasks.register<JacocoReport>("jacocoAggregatedReport") {
     dependsOn(subprojects.map { it.tasks.named("test") })
     dependsOn(subprojects.map { it.tasks.named("integrationTest") })
+    dependsOn(subprojects.map { it.tasks.named("bddTest") })
     dependsOn(subprojects.map { it.tasks.named("classes") })
 
     group = "verification"
@@ -79,7 +94,7 @@ tasks.register<JacocoReport>("jacocoAggregatedReport") {
 
     val execFiles = subprojects.map { subproject ->
         fileTree(subproject.layout.buildDirectory) {
-            include("jacoco/test.exec", "jacoco/integrationTest.exec")
+            include("jacoco/test.exec", "jacoco/integrationTest.exec", "jacoco/bddTest.exec")
         }
     }
 
@@ -102,12 +117,16 @@ sonar {
     properties {
         property("sonar.projectKey", "auto-repair-shop")
         property("sonar.projectName", "Auto Repair Shop")
+        property("sonar.organization", System.getenv("SONAR_ORGANIZATION") ?: "ivanzao")
         property("sonar.host.url", System.getenv("SONAR_HOST_URL") ?: "http://localhost:9000")
         property("sonar.token", System.getenv("SONAR_TOKEN") ?: "")
 
         property("sonar.exclusions", "**/build/**,**/*Fixtures.kt")
         property("sonar.test.exclusions", "**/build/**")
-        property("sonar.coverage.exclusions", "**/main/src/main/kotlin/**,**/KtorHttpServer.kt,**/*DTO.kt")
+        property(
+            "sonar.coverage.exclusions",
+            "**/main/src/main/kotlin/**,**/KtorHttpServer.kt,**/*DTO.kt,**/config/**,**/auth/**,**/metric/**"
+        )
 
         property(
             "sonar.coverage.jacoco.xmlReportPaths",

@@ -4,4 +4,5 @@ metadata:
   name: auto-repair-shop-config
 data:
   SERVER_PORT: "8080"
-  # DATABASE_URL, DATABASE_USERNAME, SNS_TOPIC_ARN são patched no overlay (lidos de SSM no CI)
+  # DATABASE_URL, DATABASE_USERNAME, SNS_TOPIC_ARN (tópico order-events) e SQS_QUEUE_URL
+  # (fila de entrada do order) são patched no overlay em runtime (lidos de SSM no CI).

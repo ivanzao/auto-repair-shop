@@ -1,8 +1,7 @@
 package br.com.soat.service
 
 import br.com.soat.service.model.Service
-import br.com.soat.supply.Supplies
-import br.com.soat.supply.model.SupplyRequirement
+import br.com.soat.shared.model.SupplyRequirement
 import kotlinx.datetime.toJavaLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
@@ -25,7 +24,7 @@ object Services : Table() {
 
 object ServiceSupplies : Table("service_supplies") {
     val serviceId = uuid("service_id").references(Services.id)
-    val supplyId = uuid("supply_id").references(Supplies.id)
+    val supplyId = uuid("supply_id")
     val quantity = integer("quantity")
 
     init {

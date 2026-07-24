@@ -12,7 +12,7 @@ auto-repair-shop/
 ├── domain/                # Logica de negocio (modelos, use cases, ports)
 ├── api/                   # REST API (Ktor routes, DTOs)
 ├── storage/               # Persistencia (Exposed, Flyway migrations)
-├── worker/                # Background jobs (EventBus, CommandBus, SNS relay)
+├── worker/                # Background jobs (outbox → SNS relay, consumidor SQS de entrada, schedulers)
 ├── infra/
 │   ├── k8s/               # Kustomize (base/ + overlays/{hml,prod}/)
 │   └── load-test/         # Teste de carga (K6)
@@ -36,28 +36,41 @@ O app **não valida assinatura JWT** nem armazena credenciais. Toda autenticaç�
 - Sem `Authorization: Bearer <jwt>` → `401 Unauthorized`.
 - Role inválida para o endpoint → `403 Forbidden`.
 
-### Event Outbox → SNS
+### Order service na Fase 4 (fluxo coreografado por eventos)
 
-Eventos de domínio marcados como `external = true` (ex.: `QuoteEmailRequestedEvent`) são gravados na tabela `events` (outbox) dentro da mesma transação que gera o efeito. O `EventProcessorTask` (scheduler periódico) lê o outbox e o `SnsRelayEventHandler` publica o payload no SNS. O Lambda de envio de email consome do SQS subscrito ao tópico.
+Na Fase 4 o monólito virou o **order service**. Ele é dono da OS, do cliente, do veículo e do catálogo de serviços; **estoque/peças** foram para o *execution* e **orçamento/pagamento** para o *billing*. O order não tem orquestrador central: **o estado da saga é derivado do status da OS**, movido por eventos.
+
+- **Produz** `OrderCreated` ao abrir a OS.
+- **Consome** de billing (`PaymentConfirmed`, `QuoteRejected`, `PaymentFailed`) e de execution (`ExecutionStarted`, `DiagnoseFinished`, `ExecutionFinished`, `PartsUnavailable`, `ExecutionFailed`, `ReservationExpired`).
+
+**Saída (outbox → SNS):** `OrderCreated` é gravado na tabela `events` (outbox) na mesma transação da criação da OS. Um scheduler (`OutboxRelayTask` → `OutboxRelay`) publica o envelope no tópico `order-events` com o message attribute `eventType` (camelCase) + `traceparent`.
+
+**Entrada (SQS → dispatch):** o `InboundEventConsumer` faz long-poll da fila de entrada, desserializa o envelope e o `InboundEventDispatcher` despacha por `eventType` lógico para os `InboundEventHandler`s. A fila recebe um superset (mesh): `eventType` sem handler é ignorado e marcado como processado. Idempotência por `eventId` na tabela `processed_events`.
 
 ```
-[OrderListenerUseCase.sendQuoteApprovalEmail]
-        │
-        ▼
-[events table] ──(EventProcessorTask)──▶ [SnsRelayEventHandler] ──▶ SNS
-                                                                     │
-                                                                     ▼
-                                                                   SQS ──▶ Lambda (MailerSend)
+[OrderUseCase.create] ──▶ [events (outbox)] ──(OutboxRelayTask)──▶ [OutboxRelay] ──▶ SNS order-events
+
+SQS (fila de entrada) ──(InboundEventConsumer)──▶ [InboundEventDispatcher] ──▶ InboundEventHandler ──▶ OrderStatusUseCase
 ```
 
-Eventos `external = false` (ex.: `OrderCompletedEvent`) seguem o fluxo in-memory via `EventBus`.
+**Status derivado (remap):** o enum da OS é `RECEIVED, IN_PROGRESS, CANCELED, COMPLETED, DELIVERED`.
+
+| Evento consumido | Efeito no status da OS |
+|---|---|
+| `PaymentConfirmed` | `RECEIVED → IN_PROGRESS` |
+| `ExecutionStarted`, `DiagnoseFinished` | apenas observabilidade (sem transição) |
+| `ExecutionFinished` | `IN_PROGRESS → COMPLETED` |
+| `PartsUnavailable`, `QuoteRejected`, `PaymentFailed`, `ExecutionFailed`, `ReservationExpired` | `→ CANCELED` |
+| entrega manual (REST) | `COMPLETED → DELIVERED` |
+
+Todas as transições são idempotentes (evento repetido ou fora de ordem vira no-op).
 
 ### Observability
 
 - **Metrics**: Micrometer + Prometheus em `/metrics`. ServiceMonitor (Prometheus Operator instalado pelo infra) faz scrape a cada 30s.
 - **Logs**: JSON estruturado via logstash-logback-encoder. Inclui `traceId`/`spanId`/`requestId` do MDC. O Alloy daemonset (instalado pelo infra) coleta e manda pro Loki.
 - **Tracing**: auto-injetado pelo OpenTelemetry Operator (instalado pelo infra). O Deployment do app traz a annotation `instrumentation.opentelemetry.io/inject-java: "true"` que ativa o injection do agent Java. Traces vão pro Tempo via Alloy.
-- **Counters de negócio**: `orders_created_total`.
+- **Counters de negócio**: `orders_created_total`, `orders_by_status_total{status}`, `order_inbound_events_total`.
 
 ---
 
@@ -71,9 +84,9 @@ Eventos `external = false` (ex.: `OrderCompletedEvent`) seguem o fluxo in-memory
 - **Database**: PostgreSQL 18.1
 - **ORM**: Exposed 0.61.0
 - **Migrations**: Flyway
-- **Messaging**: AWS SDK for Kotlin (SNS)
+- **Messaging**: AWS SDK for Kotlin (SNS + SQS)
 - **Observability**: Micrometer Prometheus, logstash-logback-encoder
-- **Testing**: JUnit 5, MockK, TestContainers
+- **Testing**: JUnit 5, MockK, TestContainers, Cucumber (BDD)
 - **Quality**: JaCoCo, SonarQube
 - **Infra (app-side)**: Docker, Kustomize, GitHub Actions
 
@@ -116,8 +129,37 @@ Username: app     Password: test
 ```bash
 ./gradlew test                    # Unitarios
 ./gradlew integrationTest         # Requer Docker (TestContainers Postgres + LocalStack SNS/SQS)
+./gradlew bddTest                 # Fluxo BDD (Cucumber) ponta-a-ponta; requer Docker
 ./gradlew jacocoAggregatedReport  # Relatorio em build/reports/jacoco/...
 ```
+
+O `bddTest` cobre o fluxo completo (criação → OrderCreated → pagamento → execução → conclusão) e um cenário de compensação (`PartsUnavailable` → `CANCELED`), com billing/execution simulados por eventos na fila do LocalStack (`main/src/test/resources/features/order_flow.feature`).
+
+### Cobertura
+
+| Métrica | Valor |
+|---|---|
+| Cobertura (SonarCloud) | **80.9%** |
+| Testes | 91 |
+| Quality gate | Passed |
+
+Análise a cada PR pelo step `Sonar` do `pr-check.yaml`, no projeto `auto-repair-shop`
+da organização `ivanzao` no SonarCloud. O quality gate exige 80% de cobertura em
+código novo.
+
+Ficam fora da contagem de cobertura o wiring de framework (`config`, `auth`,
+`metric`), o módulo `main` e os DTOs — código sem lógica de negócio própria. Eles
+seguem analisados para bugs, code smells e security hotspots.
+
+Para reproduzir localmente:
+
+```bash
+./gradlew test integrationTest bddTest jacocoAggregatedReport
+# relatório HTML em build/reports/jacoco/jacocoAggregatedReport/html/index.html
+```
+
+<!-- TODO: print do dashboard do SonarCloud (projeto é privado, link exige login) -->
+
 
 ---
 
@@ -153,16 +195,17 @@ kubectl kustomize infra/k8s/overlays/hml | kubectl apply -f -
 
 ### Valores dinâmicos por env
 
-O CI lê 4 params do SSM, busca credenciais do DB no Secrets Manager (JSON com host/port/dbname/username/password) e patcheia o ConfigMap antes do apply:
+O CI lê os params do SSM, busca credenciais do DB no Secrets Manager (JSON com host/port/dbname/username/password) e patcheia o ConfigMap antes do apply:
 
 | Param SSM | Conteúdo | Uso |
 |-----------|----------|-----|
 | `/auto-repair-shop/{env}/eks/cluster-name` | nome do cluster EKS | `aws eks update-kubeconfig` |
 | `/auto-repair-shop/{env}/db/secret-arn` | ARN do Secrets Manager com credenciais do app | `aws secretsmanager get-secret-value` → JSON com host, port, dbname, username, password |
-| `/auto-repair-shop/{env}/sns/events-topic-arn` | ARN do tópico SNS de eventos | `SNS_TOPIC_ARN` no ConfigMap |
+| `/auto-repair-shop/{env}/sns/order-events-topic-arn` | ARN do tópico de eventos do order | `SNS_TOPIC_ARN` no ConfigMap |
+| `/auto-repair-shop/{env}/sqs/order-saga-queue-url` | URL da fila de entrada do order | `SQS_QUEUE_URL` no ConfigMap |
 | `/auto-repair-shop/{env}/apigw/endpoint` | endpoint do API Gateway | smoke test pós-deploy |
 
-Todos os 4 params são **obrigatórios** — se algum não existir, o deploy falha no step de leitura SSM. Os dois primeiros são publicados hoje em `hml/ssm.tf`/`prod/ssm.tf` no `auto-repair-shop-infra`. SNS e APIGW serão publicados pelos sub-projetos correspondentes (Plans de Lambda + API Gateway).
+Todos os params são **obrigatórios** — se algum não existir, o deploy falha no step de leitura SSM. Cluster e DB são publicados em `hml/ssm.tf`/`prod/ssm.tf`; tópico e fila do order vêm do `modules/messaging` (Plano 1 do `auto-repair-shop-infra`); APIGW vem do módulo de gateway.
 
 ---
 
