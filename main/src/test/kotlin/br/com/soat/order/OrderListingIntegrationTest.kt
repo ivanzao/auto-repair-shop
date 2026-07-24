@@ -77,10 +77,10 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
         assertEquals(
             listOf(
-                inProgress2.id.toString(),   // IN_PROGRESS, earlier
-                inProgress1.id.toString(),   // IN_PROGRESS, later
-                received2.id.toString(),     // RECEIVED, earlier
-                received1.id.toString()      // RECEIVED, later
+                inProgress2.id.toString(),
+                inProgress1.id.toString(),
+                received2.id.toString(),
+                received1.id.toString()
             ),
             orderIds
         )

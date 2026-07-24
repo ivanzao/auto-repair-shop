@@ -53,21 +53,21 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             id = UUID.randomUUID(),
             orderId = order1Id,
             inProgressAt = LocalDateTime.of(2024, 1, 1, 10, 0, 0),
-            completedAt = LocalDateTime.of(2024, 1, 1, 10, 1, 40) // 100 seconds later
+            completedAt = LocalDateTime.of(2024, 1, 1, 10, 1, 40)
         )
 
         val metric2 = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order2Id,
             inProgressAt = LocalDateTime.of(2024, 1, 2, 10, 0, 0),
-            completedAt = LocalDateTime.of(2024, 1, 2, 10, 3, 20) // 200 seconds later
+            completedAt = LocalDateTime.of(2024, 1, 2, 10, 3, 20)
         )
 
         val metric3 = OrderExecutionMetric(
             id = UUID.randomUUID(),
             orderId = order3Id,
             inProgressAt = LocalDateTime.of(2024, 1, 3, 10, 0, 0),
-            completedAt = LocalDateTime.of(2024, 1, 3, 10, 5, 0) // 300 seconds later
+            completedAt = LocalDateTime.of(2024, 1, 3, 10, 5, 0)
         )
 
         orderExecutionMetricRepository.create(metric1)
@@ -108,7 +108,7 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
         val response = http.getOrderMetrics(bearerToken)
 
         assertEquals(200, response.statusCode())
-        assertEquals(1, response.body().totalCompleted) // Only 1 completed
+        assertEquals(1, response.body().totalCompleted)
         assertEquals(100, response.body().averageExecutionTimeSeconds)
     }
 

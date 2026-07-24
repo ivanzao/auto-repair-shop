@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: auto-repair-shop-config
+  name: order-config
 data:
   SERVER_PORT: "8080"
   # DATABASE_URL, DATABASE_USERNAME, SNS_TOPIC_ARN (tópico order-events) e SQS_QUEUE_URL

@@ -7,11 +7,11 @@ const LOGIN_PASSWORD = 'admin';
 
 export const options = {
   stages: [
-    { duration: '30s', target: 5 },    // Warm-up
-    { duration: '1m',  target: 15 },   // Ramp-up
-    { duration: '2m',  target: 25 },   // Stress
-    { duration: '3m',  target: 25 },   // Sustain
-    { duration: '1m',  target: 0 },    // Cool-down
+    { duration: '30s', target: 5 },
+    { duration: '1m',  target: 15 },
+    { duration: '2m',  target: 25 },
+    { duration: '3m',  target: 25 },
+    { duration: '1m',  target: 0 },
   ],
   thresholds: {
     'http_req_duration': ['p(95)<5000'],
@@ -20,7 +20,6 @@ export const options = {
 };
 
 export default function () {
-  // Health check (~20% of requests)
   if (Math.random() < 0.2) {
     const healthRes = http.get(`${BASE_URL}/health`);
     check(healthRes, {
@@ -28,7 +27,6 @@ export default function () {
     });
   }
 
-  // Login - BCrypt CPU stress (~80% of requests)
   const loginRes = http.post(
     `${BASE_URL}/v1/login`,
     JSON.stringify({

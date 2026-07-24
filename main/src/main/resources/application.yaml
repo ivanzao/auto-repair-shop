@@ -14,16 +14,14 @@ database:
 
 security:
   hash:
-    cost: "${SECURITY_HASH_COST:10}"  # BCrypt cost factor (10-12 recommended for production)
+    cost: "${SECURITY_HASH_COST:10}"
 
 sns:
   topic:
-    # tópico de eventos do order (produz OrderCreated). Sempre setado por compose/k8s (SNS_TOPIC_ARN).
     arn: "${SNS_TOPIC_ARN}"
 
 sqs:
   queue:
-    # fila de eventos de entrada do order. Sempre setado por compose/k8s (SQS_QUEUE_URL).
     url: "${SQS_QUEUE_URL}"
 
 aws:

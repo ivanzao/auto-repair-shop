@@ -44,12 +44,14 @@ jobs:
           SNS_TOPIC=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/sns/order-events-topic-arn --query Parameter.Value --output text)
           QUEUE_URL=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/sqs/order-queue-url --query Parameter.Value --output text)
           APIGW=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/apigw/endpoint --query Parameter.Value --output text)
+          NODE_PORT=$(aws ssm get-parameter --name /auto-repair-shop/${{ env.ENV }}/order/node-port --query Parameter.Value --output text)
           {
             echo "cluster=$CLUSTER"
             echo "db_secret_arn=$DB_SECRET_ARN"
             echo "sns_topic=$SNS_TOPIC"
             echo "queue_url=$QUEUE_URL"
             echo "apigw_endpoint=$APIGW"
+            echo "node_port=$NODE_PORT"
           } >> "$GITHUB_OUTPUT"
 
       - name: Read DB credentials from Secrets Manager
@@ -74,7 +76,7 @@ jobs:
 
       - name: Create K8s Secret with DB password
         run: |
-          kubectl create secret generic auto-repair-shop-secret \
+          kubectl create secret generic order-secret \
             --namespace=auto-repair-shop-${{ env.ENV }} \
             --from-literal="DATABASE_PASSWORD=${{ steps.db.outputs.password }}" \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -95,13 +97,22 @@ jobs:
           apiVersion: v1
           kind: ConfigMap
           metadata:
-            name: auto-repair-shop-config
+            name: order-config
           data:
             APPLICATION_PROFILE: "${{ env.ENV }}"
             DATABASE_URL: "jdbc:postgresql://${{ steps.db.outputs.host }}:${{ steps.db.outputs.port }}/${{ steps.db.outputs.name }}"
             DATABASE_USERNAME: "${{ steps.db.outputs.user }}"
             SNS_TOPIC_ARN: "${{ steps.ssm.outputs.sns_topic }}"
             SQS_QUEUE_URL: "${{ steps.ssm.outputs.queue_url }}"
+          EOF
+
+      - name: Rewrite Service nodePort from SSM
+        working-directory: infra/k8s/overlays/${{ env.ENV }}
+        run: |
+          cat > nodeport-patch.yaml <<EOF
+          - op: add
+            path: /spec/ports/0/nodePort
+            value: ${{ steps.ssm.outputs.node_port }}
           EOF
 
       - name: Set image tag in overlay
@@ -113,18 +124,18 @@ jobs:
         run: kubectl apply -k infra/k8s/overlays/${{ env.ENV }}
 
       - name: Wait for rollout
-        run: kubectl rollout status deployment/auto-repair-shop -n auto-repair-shop-${{ env.ENV }} --timeout=300s
+        run: kubectl rollout status deployment/order -n auto-repair-shop-${{ env.ENV }} --timeout=300s
 
       - name: Ensure OTel agent injected
         run: |
           NS=auto-repair-shop-${{ env.ENV }}
-          agent=$(kubectl get pods -n "$NS" -l app=auto-repair-shop \
+          agent=$(kubectl get pods -n "$NS" -l app=order \
             -o jsonpath='{range .items[*]}{range .spec.initContainers[*]}{.name}{"\n"}{end}{end}' \
             | grep -c opentelemetry-auto-instrumentation-java || true)
           if [ "$agent" -eq 0 ]; then
             echo "::warning::OTel agent not injected (mpod webhook raced pod creation); restarting"
-            kubectl rollout restart deployment/auto-repair-shop -n "$NS"
-            kubectl rollout status deployment/auto-repair-shop -n "$NS" --timeout=300s
+            kubectl rollout restart deployment/order -n "$NS"
+            kubectl rollout status deployment/order -n "$NS" --timeout=300s
           else
             echo "OTel agent present."
           fi
@@ -132,7 +143,7 @@ jobs:
       - name: Smoke test via API Gateway
         run: |
           for i in $(seq 1 10); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.ssm.outputs.apigw_endpoint }}/health")
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.ssm.outputs.apigw_endpoint }}/order/health")
             if [ "$CODE" = "200" ]; then
               echo "Smoke test passed (status=200)"
               exit 0

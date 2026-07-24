@@ -58,7 +58,7 @@ class DocumentTest {
     @Test
     fun `should reject document with invalid length`() {
         val exception = assertThrows<IllegalArgumentException> {
-            Document("123456789") // 9 digits - neither CPF nor CNPJ
+            Document("123456789")
         }
         assertTrue(exception.message!!.contains("11 digits (CPF) or 14 digits (CNPJ)"))
     }
@@ -66,14 +66,14 @@ class DocumentTest {
     @Test
     fun `should reject document with 12 digits`() {
         assertThrows<IllegalArgumentException> {
-            Document("123456789012") // 12 digits
+            Document("123456789012")
         }
     }
 
     @Test
     fun `should reject document with 13 digits`() {
         assertThrows<IllegalArgumentException> {
-            Document("1234567890123") // 13 digits
+            Document("1234567890123")
         }
     }
 
@@ -94,7 +94,7 @@ class DocumentTest {
     @Test
     fun `CPF and CNPJ with same prefix should not be equal`() {
         val cpf = Document("12345678909")
-        val cnpj = Document("12345678909012") // Different length, different document
+        val cnpj = Document("12345678909012")
         assertFalse(cpf == cnpj)
     }
 }
