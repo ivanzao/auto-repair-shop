@@ -71,7 +71,7 @@ sequenceDiagram
 - **ShedLock**: `EventProcessorTask` usa lock distribuído via tabela `shedlock` — múltiplos pods da app não disputam o outbox.
 - **Aprovação por link público**: o cliente não tem JWT. A rota é exposta no API Gateway sem authorizer (integração `app_public`) e o token UUID single-use no DB serve de credencial.
 - **Métricas observáveis** durante o fluxo:
-  - `orders_created_total`
+  - `orders_total` (o meter se chama `orders_created_total`; `_created` é reservado e cai no scrape)
   - `orders_by_status_total{status}` em cada transição
   - `http_server_requests_seconds_*` (OTel auto-injection)
   - Logs em `OrderUseCase` com `orderId`, `status`, `traceId` (MDC)

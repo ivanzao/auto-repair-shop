@@ -70,7 +70,7 @@ Todas as transições são idempotentes (evento repetido ou fora de ordem vira n
 - **Metrics**: Micrometer + Prometheus em `/metrics`. ServiceMonitor (Prometheus Operator instalado pelo infra) faz scrape a cada 30s.
 - **Logs**: JSON estruturado via logstash-logback-encoder. Inclui `traceId`/`spanId`/`requestId` do MDC. O Alloy daemonset (instalado pelo infra) coleta e manda pro Loki.
 - **Tracing**: auto-injetado pelo OpenTelemetry Operator (instalado pelo infra). O Deployment do app traz a annotation `instrumentation.opentelemetry.io/inject-java: "true"` que ativa o injection do agent Java. Traces vão pro Tempo via Alloy.
-- **Counters de negócio**: `orders_created_total`, `orders_by_status_total{status}`, `order_inbound_events_total`.
+- **Counters de negócio**, nomes como saem no `/metrics`: `orders_total`, `orders_by_status_total{status}`, `order_inbound_events_total`. O meter de criação se chama `orders_created_total` no código, mas `_created` é sufixo reservado do OpenMetrics e é removido no scrape — as queries do Grafana usam `orders_total`.
 
 ---
 
