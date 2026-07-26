@@ -1,6 +1,7 @@
 package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
+import br.com.soat.shared.model.User
 import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.PhoneNumber
@@ -26,12 +27,12 @@ class OrderLoggingTest {
         model = "Corolla",
         year = 2024,
     )
-    private val attendantId = UUID.randomUUID()
+    private val openedBy = User(UUID.randomUUID(), "12345678909")
 
     private val order = Order(
         customer = customer,
         vehicle = vehicle,
-        attendantId = attendantId,
+        openedBy = openedBy,
         description = "engine noise",
     )
 
@@ -44,7 +45,7 @@ class OrderLoggingTest {
                 kv("orderId", order.id).toString(),
                 kv("customerId", customer.id).toString(),
                 kv("vehicleId", vehicle.id).toString(),
-                kv("attendantId", attendantId).toString(),
+                kv("openedById", openedBy.id).toString(),
                 kv("status", "RECEIVED").toString(),
             ),
             rendered,

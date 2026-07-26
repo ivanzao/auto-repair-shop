@@ -1,7 +1,6 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
-import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.dto.CreateOrderRequestDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
@@ -14,8 +13,11 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset.UTC
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class OrderLifecycleIntegrationTest : IntegrationTest() {
@@ -24,20 +26,17 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
     private val orderScheduleRepository: OrderScheduleRepository by lazy { get<OrderScheduleRepository>() }
 
     @Test
-    fun `creates order as RECEIVED and exposes it via public status endpoint`() {
-        val attendant = createAttendant()
+    fun `creates order as RECEIVED with no items and keeps the JWT identity`() {
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
-        val service = createService(name = "Oil Change")
 
-        val bearerToken = attendantHeaders(attendant.id)
+        val openedById = UUID.randomUUID()
+        val bearerToken = attendantHeaders(userId = openedById, document = "12345678909")
 
         val requestDto = CreateOrderRequestDTO(
             customerId = customer.id,
             vehicleId = vehicle.id,
             description = "Noise in the engine",
-            servicesIds = listOf(service.id),
-            extraSuppliesRequests = emptyList(),
         )
         val createOrderResponse = http.createOrder(requestDto, bearerToken)
         assertEquals(201, createOrderResponse.statusCode())
@@ -45,10 +44,13 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
         val createdOrder = orderRepository.findById(createOrderResponse.body().id)!!
         assertEquals(customer.id, createdOrder.customer.id)
         assertEquals(vehicle.id, createdOrder.vehicle.id)
-        assertEquals(attendant.id, createdOrder.attendantId)
         assertEquals(requestDto.description, createdOrder.description)
         assertEquals(Order.Status.RECEIVED, createdOrder.status)
-        assertEquals(listOf(service.id), createdOrder.services.map { it.id })
+        assertTrue(createdOrder.services.isEmpty(), "a OS nasce sem itens; eles vêm do diagnóstico")
+        assertTrue(createdOrder.supplies.isEmpty(), "a OS nasce sem itens; eles vêm do diagnóstico")
+        assertEquals(openedById, createdOrder.openedBy.id)
+        assertEquals("12345678909", createdOrder.openedBy.document)
+        assertNull(createdOrder.diagnosedBy, "o mecânico só chega com o DiagnoseFinished")
 
         val status = http.getOrderStatus(createdOrder.id.toString())
         assertEquals(200, status.statusCode())
@@ -58,20 +60,33 @@ class OrderLifecycleIntegrationTest : IntegrationTest() {
     }
 
     @Test
-    fun `schedules vehicle delivery for a RECEIVED order`() {
-        val attendant = createAttendant()
+    fun `creates order without any attendant row in the database`() {
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
-        val service = createService(name = "Brake Repair")
-        val bearerToken = attendantHeaders(attendant.id)
+
+        val response = http.createOrder(
+            CreateOrderRequestDTO(
+                customerId = customer.id,
+                vehicleId = vehicle.id,
+                description = "No attendant table anymore",
+            ),
+            attendantHeaders(userId = UUID.randomUUID()),
+        )
+
+        assertEquals(201, response.statusCode(), "identidade vem do JWT, não do banco")
+    }
+
+    @Test
+    fun `schedules vehicle delivery for a RECEIVED order`() {
+        val customer = createCustomer()
+        val vehicle = createVehicle(customer.id)
+        val bearerToken = attendantHeaders()
 
         val order = http.createOrder(
             CreateOrderRequestDTO(
                 customerId = customer.id,
                 vehicleId = vehicle.id,
                 description = "Squeaky brakes",
-                servicesIds = listOf(service.id),
-                extraSuppliesRequests = emptyList(),
             ),
             bearerToken,
         ).body()

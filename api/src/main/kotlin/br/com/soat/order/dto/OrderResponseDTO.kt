@@ -3,7 +3,9 @@ package br.com.soat.order.dto
 import br.com.soat.customer.model.Customer
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.Order.Status
-import br.com.soat.service.model.Service
+import br.com.soat.order.model.QuotedService
+import br.com.soat.order.model.QuotedSupply
+import br.com.soat.shared.model.User
 import br.com.soat.vehicle.model.Vehicle
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
@@ -17,11 +19,12 @@ data class OrderResponseDTO(
 
     val customer: Customer,
     val vehicle: Vehicle,
-    val attendantId: UUID,
+    val openedBy: User,
+    val diagnosedBy: User? = null,
 
     val description: String,
-    val services: List<Service>,
-    val technician: String? = null,
+    val services: List<QuotedService>,
+    val supplies: List<QuotedSupply>,
 ) {
     companion object {
         fun from(order: Order) = OrderResponseDTO(
@@ -30,10 +33,11 @@ data class OrderResponseDTO(
             status = order.status,
             customer = order.customer,
             vehicle = order.vehicle,
-            attendantId = order.attendantId,
+            openedBy = order.openedBy,
+            diagnosedBy = order.diagnosedBy,
             description = order.description,
             services = order.services,
-            technician = order.technician,
+            supplies = order.supplies,
         )
     }
 }

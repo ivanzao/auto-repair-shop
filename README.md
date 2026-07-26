@@ -38,32 +38,37 @@ O app **não valida assinatura JWT** nem armazena credenciais. Toda autenticaç�
 
 ### Order service na Fase 4 (fluxo coreografado por eventos)
 
-Na Fase 4 o monólito virou o **order service**. Ele é dono da OS, do cliente, do veículo e do catálogo de serviços; **estoque/peças** foram para o *execution* e **orçamento/pagamento** para o *billing*. O order não tem orquestrador central: **o estado da saga é derivado do status da OS**, movido por eventos.
+Na Fase 4 o monólito virou o **order service**. Ele é dono da OS, do cliente e do veículo; **catálogo de serviços, estoque de insumos, reservas e diagnóstico** foram para o *execution* e **orçamento/pagamento** para o *billing*. O order não tem orquestrador central: **o estado da saga é derivado do status da OS**, movido por eventos. Ele é o read model da saga — não conhece catálogo nem preço, e recebe os itens já precificados.
 
-- **Produz** `OrderCreated` ao abrir a OS.
-- **Consome** de billing (`PaymentConfirmed`, `QuoteRejected`, `PaymentFailed`) e de execution (`ExecutionStarted`, `DiagnoseFinished`, `ExecutionFinished`, `PartsUnavailable`, `ExecutionFailed`, `ReservationExpired`).
+Identidade não passa por banco: quem abriu a OS vem do JWT (`sub` e `cpf`) e é gravado como `openedBy`; quem diagnosticou chega no payload do `DiagnoseFinished` e é gravado como `diagnosedBy`, nulo enquanto a OS espera diagnóstico. Não existe tabela de atendentes — os dois são referências a usuários de outro domínio, sem chave estrangeira.
 
-**Saída (outbox → SNS):** `OrderCreated` é gravado na tabela `events` (outbox) na mesma transação da criação da OS. Um scheduler (`OutboxRelayTask` → `OutboxRelay`) publica o envelope no tópico `order-events` com o message attribute `eventType` (camelCase) + `traceparent`.
+- **Produz** `OrderCreated` ao abrir a OS (fino: cliente e veículo, sem itens) e `OrderAwaitingApproval` quando o diagnóstico chega precificado.
+- **Consome** de billing (`PaymentConfirmed`, `QuoteRejected`, `PaymentFailed`) e de execution (`DiagnoseFinished`, `ExecutionStarted`, `ExecutionFinished`, `SuppliesUnavailable`, `ExecutionFailed`, `ReservationExpired`).
 
-**Entrada (SQS → dispatch):** o `InboundEventConsumer` faz long-poll da fila de entrada, desserializa o envelope e o `InboundEventDispatcher` despacha por `eventType` lógico para os `InboundEventHandler`s. A fila recebe um superset (mesh): `eventType` sem handler é ignorado e marcado como processado. Idempotência por `eventId` na tabela `processed_events`.
+**Saída (outbox → SNS):** `OrderCreated` e `OrderAwaitingApproval` são gravados na tabela `events` (outbox) na mesma transação que muda a OS. Um scheduler (`OutboxRelayTask` → `OutboxRelay`) publica o envelope no tópico `order-events` com o message attribute `eventType` (camelCase) + `traceparent`.
+
+**Entrada (SQS → dispatch):** o `InboundEventConsumer` faz long-poll da fila de entrada, desserializa o envelope e despacha por `eventType` para os `InboundEventHandler`s. A fila recebe um superset (mesh): `eventType` sem handler é ignorado e a mensagem é apagada. Idempotência por `eventId` na tabela `idempotencies`.
 
 ```
 [OrderUseCase.create] ──▶ [events (outbox)] ──(OutboxRelayTask)──▶ [OutboxRelay] ──▶ SNS order-events
 
-SQS (fila de entrada) ──(InboundEventConsumer)──▶ [InboundEventDispatcher] ──▶ InboundEventHandler ──▶ OrderStatusUseCase
+SQS (fila de entrada) ──(InboundEventConsumer)──▶ InboundEventHandler ──▶ OrderListenerUseCase
 ```
 
-**Status derivado (remap):** o enum da OS é `RECEIVED, IN_PROGRESS, CANCELED, COMPLETED, DELIVERED`.
+**Status derivado:** `RECEIVED → WAITING_APPROVAL → EXECUTION_ENQUEUED → IN_PROGRESS → COMPLETED → DELIVERED`, mais `CANCELED` a partir de qualquer estado não terminal. `RECEIVED` significa "aguardando diagnóstico" — não existe estado de diagnóstico em curso, porque o mecânico pega a OS da fila e conclui o diagnóstico numa chamada só.
 
 | Evento consumido | Efeito no status da OS |
 |---|---|
-| `PaymentConfirmed` | `RECEIVED → IN_PROGRESS` |
-| `ExecutionStarted`, `DiagnoseFinished` | apenas observabilidade (sem transição) |
+| `DiagnoseFinished` | `RECEIVED → WAITING_APPROVAL`, grava o snapshot precificado e o `diagnosedBy`, e emite `OrderAwaitingApproval` (que **não** repassa o `diagnosedBy`) |
+| `PaymentConfirmed` | `WAITING_APPROVAL → EXECUTION_ENQUEUED` |
+| `ExecutionStarted` | `EXECUTION_ENQUEUED → IN_PROGRESS` |
 | `ExecutionFinished` | `IN_PROGRESS → COMPLETED` |
-| `PartsUnavailable`, `QuoteRejected`, `PaymentFailed`, `ExecutionFailed`, `ReservationExpired` | `→ CANCELED` |
+| `SuppliesUnavailable`, `QuoteRejected`, `PaymentFailed`, `ExecutionFailed`, `ReservationExpired` | `→ CANCELED` |
 | entrega manual (REST) | `COMPLETED → DELIVERED` |
 
 Todas as transições são idempotentes (evento repetido ou fora de ordem vira no-op).
+
+O order usa `EXECUTION_ENQUEUED` onde o execution usa `ENQUEUED` para o mesmo instante. É deliberado: o nome do status da OS diz **o que** está enfileirado.
 
 ### Observability
 
@@ -133,7 +138,7 @@ Username: app     Password: test
 ./gradlew jacocoAggregatedReport  # Relatorio em build/reports/jacoco/...
 ```
 
-O `bddTest` cobre o fluxo completo (criação → OrderCreated → pagamento → execução → conclusão) e um cenário de compensação (`PartsUnavailable` → `CANCELED`), com billing/execution simulados por eventos na fila do LocalStack (`main/src/test/resources/features/order_flow.feature`).
+O `bddTest` cobre o fluxo completo (criação → OrderCreated → diagnóstico → OrderAwaitingApproval → pagamento → execução → conclusão) e cenários de compensação (`SuppliesUnavailable` e `QuoteRejected` → `CANCELED`), com billing/execution simulados por eventos na fila do LocalStack (`main/src/test/resources/features/order_flow.feature`).
 
 ### Cobertura
 

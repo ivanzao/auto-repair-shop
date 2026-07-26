@@ -105,7 +105,11 @@ object BddContext {
         }
     }
 
-    fun receiveFromTopic(mapper: com.fasterxml.jackson.databind.ObjectMapper, timeoutMs: Long = 5000): JsonNode? {
+    fun receiveFromTopic(
+        mapper: com.fasterxml.jackson.databind.ObjectMapper,
+        eventType: String? = null,
+        timeoutMs: Long = 5000,
+    ): JsonNode? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             val msg = runBlocking {
@@ -117,7 +121,8 @@ object BddContext {
                 runBlocking {
                     sqs.deleteMessage(DeleteMessageRequest { queueUrl = spyQueueUrl; receiptHandle = msg.receiptHandle })
                 }
-                return mapper.readTree(msg.body)
+                val node = mapper.readTree(msg.body)
+                if (eventType == null || node["eventType"].asText() == eventType) return node
             }
         }
         return null

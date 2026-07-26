@@ -1,9 +1,7 @@
 package br.com.soat.config
 
-import br.com.soat.attendant.attendantRoutes
 import br.com.soat.customer.customerRoutes
 import br.com.soat.order.orderRoutes
-import br.com.soat.service.serviceRoutes
 import br.com.soat.vehicle.vehicleRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.plugins.swagger.swaggerUI
@@ -20,8 +18,6 @@ fun Application.configureRouting(koin: Koin) {
         swaggerUI(path = "swagger", swaggerFile = "openapi/documentation.yaml")
     }
 
-    attendantRoutes(koin)
-    serviceRoutes(koin)
     vehicleRoutes(koin)
     customerRoutes(koin)
     orderRoutes(koin)
