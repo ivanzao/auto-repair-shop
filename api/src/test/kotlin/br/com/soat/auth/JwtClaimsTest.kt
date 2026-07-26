@@ -17,13 +17,16 @@ class JwtClaimsTest {
         Base64.getUrlEncoder().withoutPadding().encodeToString(s.toByteArray())
 
     @Test
-    fun `parses sub and role from JWT payload`() {
-        val token = jwt("""{"sub":"d2d2c1e4-1111-2222-3333-aaaabbbbcccc","role":"ATTENDANT","exp":1234}""")
+    fun `parses sub, role and cpf from JWT payload`() {
+        val token = jwt(
+            """{"sub":"d2d2c1e4-1111-2222-3333-aaaabbbbcccc","role":"ATTENDANT","cpf":"12345678909","exp":1234}"""
+        )
 
         val claims = JwtClaims.parse(token)
 
         assertEquals("d2d2c1e4-1111-2222-3333-aaaabbbbcccc", claims!!.sub)
         assertEquals("ATTENDANT", claims.role)
+        assertEquals("12345678909", claims.cpf)
     }
 
     @Test
@@ -38,10 +41,12 @@ class JwtClaimsTest {
     }
 
     @Test
-    fun `returns null when payload is missing sub or role`() {
-        val noSub = jwt("""{"role":"ADMIN"}""")
-        val noRole = jwt("""{"sub":"abc"}""")
+    fun `returns null when payload is missing sub, role or cpf`() {
+        val noSub = jwt("""{"role":"ADMIN","cpf":"12345678909"}""")
+        val noRole = jwt("""{"sub":"abc","cpf":"12345678909"}""")
+        val noCpf = jwt("""{"sub":"abc","role":"ADMIN"}""")
         assertNull(JwtClaims.parse(noSub))
         assertNull(JwtClaims.parse(noRole))
+        assertNull(JwtClaims.parse(noCpf))
     }
 }

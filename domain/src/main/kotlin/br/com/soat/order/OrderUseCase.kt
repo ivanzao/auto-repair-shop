@@ -11,18 +11,13 @@ import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderMetrics
 import br.com.soat.order.model.OrderSchedule
 import br.com.soat.order.model.logParams
-import br.com.soat.order.exception.ServiceNotFoundException
 import br.com.soat.order.model.request.CreateOrderRequest
 import br.com.soat.order.model.request.ScheduleOrderVehicleRequest
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
 import br.com.soat.order.repository.OrderScheduleRepository
-import br.com.soat.service.model.Service
-import br.com.soat.service.repository.ServiceRepository
 import br.com.soat.shared.model.Page
 import br.com.soat.shared.repository.RepositoryTransactionHandler
-import br.com.soat.attendant.repository.AttendantRepository
-import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.vehicle.repository.VehicleRepository
 import br.com.soat.vehicle.exception.VehicleNotFoundException
 import java.time.Duration
@@ -35,9 +30,7 @@ import org.slf4j.LoggerFactory
 class OrderUseCase(
     private val customerRepository: CustomerRepository,
     private val vehicleRepository: VehicleRepository,
-    private val attendantRepository: AttendantRepository,
     private val orderRepository: OrderRepository,
-    private val serviceRepository: ServiceRepository,
     private val outbox: OutboxRepository,
     private val orderScheduleRepository: OrderScheduleRepository,
     private val orderExecutionMetricRepository: OrderExecutionMetricRepository,
@@ -59,19 +52,12 @@ class OrderUseCase(
         val vehicle = vehicleRepository.findById(request.vehicleId)
             ?: throw VehicleNotFoundException(request.vehicleId)
 
-        val attendant = attendantRepository.findById(request.attendantId)
-            ?: throw AttendantNotFoundException(request.attendantId)
-
-        val services = serviceRepository.findAllByIds(request.servicesIds)
-        validateRequestedServicesExists(services, request.servicesIds)
-
         val order = Order(
             customer = customer,
             vehicle = vehicle,
-            attendantId = attendant.id,
+            openedBy = request.openedBy,
             description = request.description,
-        ).addServices(services)
-            .addSupplyRequirements(request.extraSupplyRequirements)
+        )
 
         val (created, event) = tx.inTransaction {
             val saved = orderRepository.create(order)
@@ -131,10 +117,5 @@ class OrderUseCase(
             ),
         )
         return delivered
-    }
-
-    private fun validateRequestedServicesExists(foundServices: List<Service>, servicesIds: List<UUID>) {
-        servicesIds.firstOrNull { it !in foundServices.map { service -> service.id } }
-            ?.let { throw ServiceNotFoundException(it) }
     }
 }

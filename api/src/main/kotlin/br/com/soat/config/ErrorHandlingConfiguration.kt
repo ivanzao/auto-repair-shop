@@ -2,13 +2,11 @@ package br.com.soat.config
 
 import br.com.soat.customer.exception.CustomerNotFoundException
 import br.com.soat.order.exception.OrderNotFoundException
-import br.com.soat.order.exception.ServiceNotFoundException
 import br.com.soat.shared.dto.ErrorResponseDTO
 import br.com.soat.shared.dto.FieldError
 import br.com.soat.shared.dto.ValidationErrorDTO
 import br.com.soat.shared.dto.toErrorResponseDTO
 import br.com.soat.shared.exception.ApplicationException
-import br.com.soat.attendant.exception.AttendantNotFoundException
 import br.com.soat.vehicle.exception.VehicleNotFoundException
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.exc.InvalidNullException
@@ -34,10 +32,7 @@ fun Application.configureErrorHandling() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             val (statusCode, body) = when (cause) {
-                is AttendantNotFoundException -> NotFound to ErrorResponseDTO("NOT_FOUND", cause.message ?: "Not found")
-
                 is OrderNotFoundException,
-                is ServiceNotFoundException,
                 is CustomerNotFoundException,
                 is VehicleNotFoundException -> NotFound to cause.toErrorResponseDTO()
 

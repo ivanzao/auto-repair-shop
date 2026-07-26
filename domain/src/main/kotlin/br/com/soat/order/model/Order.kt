@@ -2,8 +2,7 @@ package br.com.soat.order.model
 
 import br.com.soat.customer.model.Customer
 import br.com.soat.order.exception.IllegalOrderStateException
-import br.com.soat.service.model.Service
-import br.com.soat.shared.model.SupplyRequirement
+import br.com.soat.shared.model.User
 import br.com.soat.vehicle.model.Vehicle
 import java.time.LocalDateTime
 import java.time.LocalDateTime.now
@@ -20,16 +19,36 @@ data class Order(
 
     val customer: Customer,
     val vehicle: Vehicle,
-    val attendantId: UUID,
-    val services: List<Service> = emptyList(),
-    val extraSupplies: List<SupplyRequirement> = emptyList(),
+    val openedBy: User,
+    val diagnosedBy: User? = null,
+    val services: List<QuotedService> = emptyList(),
+    val supplies: List<QuotedSupply> = emptyList(),
 
     val description: String,
-    val technician: String? = null,
 ) {
 
+    fun awaitingApproval(
+        diagnosedBy: User,
+        services: List<QuotedService>,
+        supplies: List<QuotedSupply>,
+    ): Order =
+        if (status == Status.RECEIVED)
+            copy(
+                status = Status.WAITING_APPROVAL,
+                diagnosedBy = diagnosedBy,
+                services = services,
+                supplies = supplies,
+                modifiedAt = now(),
+            )
+        else this
+
+    fun executionEnqueued(): Order =
+        if (status == Status.WAITING_APPROVAL)
+            copy(status = Status.EXECUTION_ENQUEUED, modifiedAt = now())
+        else this
+
     fun inProgress(): Order =
-        if (status == Status.RECEIVED) copy(status = Status.IN_PROGRESS, modifiedAt = now()) else this
+        if (status == Status.EXECUTION_ENQUEUED) copy(status = Status.IN_PROGRESS, modifiedAt = now()) else this
 
     fun completed(): Order =
         if (status == Status.IN_PROGRESS) copy(status = Status.COMPLETED, modifiedAt = now()) else this
@@ -44,27 +63,11 @@ data class Order(
         return copy(status = Status.DELIVERED, modifiedAt = now())
     }
 
-    fun addServices(services: List<Service>) = copy(services = this.services + services)
-
-    fun addSupplyRequirements(supplyRequirements: List<SupplyRequirement>) = copy(
-        extraSupplies = (this.extraSupplies + supplyRequirements)
-            .groupingBy { it.supplyId }
-            .fold(0) { acc, req -> acc + req.quantity }
-            .map { (supplyId, totalQuantity) -> SupplyRequirement(supplyId, totalQuantity) }
-    )
-
     fun canScheduleVehicleDelivery() = status == Status.RECEIVED
     fun canScheduleVehicleReturn() = status == Status.COMPLETED
 
-    fun getSupplyRequirements(): List<SupplyRequirement> {
-        val serviceSupplies = services.flatMap { it.requiredSupplies }
-        return (serviceSupplies + extraSupplies).groupingBy { it.supplyId }
-            .fold(0) { acc, requirement -> acc + requirement.quantity }
-            .map { (supplyId, totalQuantity) -> SupplyRequirement(supplyId, totalQuantity) }
-    }
-
     enum class Status {
-        RECEIVED, IN_PROGRESS, CANCELED, COMPLETED, DELIVERED
+        RECEIVED, WAITING_APPROVAL, EXECUTION_ENQUEUED, IN_PROGRESS, COMPLETED, DELIVERED, CANCELED
     }
 
     companion object {

@@ -174,15 +174,21 @@ abstract class IntegrationTest {
 
     inline fun <reified T> get(): T = koinApplication.koin.get()
 
-    protected fun adminHeaders(userId: UUID = UUID.randomUUID()): Map<String, String> =
-        mapOf("Authorization" to "Bearer ${fakeJwt(userId = userId, role = "ADMIN")}")
+    protected fun adminHeaders(
+        userId: UUID = UUID.randomUUID(),
+        document: String = "52998224725",
+    ): Map<String, String> =
+        mapOf("Authorization" to "Bearer ${fakeJwt(userId = userId, role = "ADMIN", document = document)}")
 
-    protected fun attendantHeaders(userId: UUID = UUID.randomUUID()): Map<String, String> =
-        mapOf("Authorization" to "Bearer ${fakeJwt(userId = userId, role = "ATTENDANT")}")
+    protected fun attendantHeaders(
+        userId: UUID = UUID.randomUUID(),
+        document: String = "12345678909",
+    ): Map<String, String> =
+        mapOf("Authorization" to "Bearer ${fakeJwt(userId = userId, role = "ATTENDANT", document = document)}")
 
-    private fun fakeJwt(userId: UUID, role: String): String {
+    private fun fakeJwt(userId: UUID, role: String, document: String): String {
         val header = b64u("""{"alg":"none","typ":"JWT"}""")
-        val payload = b64u("""{"sub":"$userId","role":"$role","exp":9999999999}""")
+        val payload = b64u("""{"sub":"$userId","role":"$role","cpf":"$document","exp":9999999999}""")
         return "$header.$payload.test"
     }
 

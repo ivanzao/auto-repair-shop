@@ -12,7 +12,7 @@ class OrderCancellationHandler(
     override val eventTypes = setOf(
         EventType.QUOTE_REJECTED,
         EventType.PAYMENT_FAILED,
-        EventType.PARTS_UNAVAILABLE,
+        EventType.SUPPLIES_UNAVAILABLE,
         EventType.EXECUTION_FAILED,
         EventType.RESERVATION_EXPIRED,
     )

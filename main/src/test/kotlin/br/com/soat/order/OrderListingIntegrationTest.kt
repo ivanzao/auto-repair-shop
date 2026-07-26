@@ -1,15 +1,15 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
-import br.com.soat.attendant.repository.AttendantRepository
-import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.model.Order
 import br.com.soat.order.repository.OrderRepository
+import br.com.soat.shared.model.User
 import br.com.soat.vehicle.createVehicle
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.time.LocalDateTime
+import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,18 +20,17 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should exclude COMPLETED, DELIVERED and CANCELED orders from listing`() {
-        val attendant = createAttendant()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
         val bearerToken = adminHeaders()
 
         val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
 
-        val receivedOrder = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, attendant.id, baseTime)
-        val inProgressOrder = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, attendant.id, baseTime.plusHours(3))
-        createOrderWithStatus(Order.Status.COMPLETED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(4))
-        createOrderWithStatus(Order.Status.DELIVERED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(5))
-        createOrderWithStatus(Order.Status.CANCELED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(6))
+        val receivedOrder = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, baseTime)
+        val inProgressOrder = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, baseTime.plusHours(3))
+        createOrderWithStatus(Order.Status.COMPLETED, customer.id, vehicle.id, baseTime.plusHours(4))
+        createOrderWithStatus(Order.Status.DELIVERED, customer.id, vehicle.id, baseTime.plusHours(5))
+        createOrderWithStatus(Order.Status.CANCELED, customer.id, vehicle.id, baseTime.plusHours(6))
 
         val response = http.listOrders(bearerToken)
         assertEquals(200, response.statusCode())
@@ -53,17 +52,16 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
     @Test
     fun `should sort by status priority and then by creation date ascending`() {
-        val attendant = createAttendant()
         val customer = createCustomer()
         val vehicle = createVehicle(customer.id)
         val bearerToken = adminHeaders()
 
         val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
 
-        val received1 = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(2))
-        val received2 = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, attendant.id, baseTime.plusHours(1))
-        val inProgress1 = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, attendant.id, baseTime.plusHours(4))
-        val inProgress2 = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, attendant.id, baseTime.plusHours(3))
+        val received1 = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, baseTime.plusHours(2))
+        val received2 = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, baseTime.plusHours(1))
+        val inProgress1 = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, baseTime.plusHours(4))
+        val inProgress2 = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, baseTime.plusHours(3))
 
         val response = http.listOrders(bearerToken)
         assertEquals(200, response.statusCode())
@@ -88,9 +86,8 @@ class OrderListingIntegrationTest : IntegrationTest() {
 
     private fun createOrderWithStatus(
         status: Order.Status,
-        customerId: java.util.UUID,
-        vehicleId: java.util.UUID,
-        attendantId: java.util.UUID,
+        customerId: UUID,
+        vehicleId: UUID,
         createdAt: LocalDateTime
     ): Order {
         val customer = get<br.com.soat.customer.repository.CustomerRepository>().findById(customerId)!!
@@ -101,12 +98,42 @@ class OrderListingIntegrationTest : IntegrationTest() {
             modifiedAt = createdAt,
             customer = customer,
             vehicle = vehicle,
-            attendantId = attendantId,
+            openedBy = User(UUID.randomUUID(), "12345678909"),
             description = "Order in status $status",
-            status = status,
-            technician = if (status != Order.Status.RECEIVED) "Tech" else null
+            status = status
         )
 
         return orderRepository.create(order)
+    }
+
+    @Test
+    fun `should rank the saga statuses from IN_PROGRESS down to RECEIVED`() {
+        val customer = createCustomer()
+        val vehicle = createVehicle(customer.id)
+        val bearerToken = adminHeaders()
+
+        val baseTime = LocalDateTime.of(2024, 1, 1, 10, 0)
+
+        val received = createOrderWithStatus(Order.Status.RECEIVED, customer.id, vehicle.id, baseTime)
+        val waitingApproval = createOrderWithStatus(Order.Status.WAITING_APPROVAL, customer.id, vehicle.id, baseTime)
+        val enqueued = createOrderWithStatus(Order.Status.EXECUTION_ENQUEUED, customer.id, vehicle.id, baseTime)
+        val inProgress = createOrderWithStatus(Order.Status.IN_PROGRESS, customer.id, vehicle.id, baseTime)
+
+        val response = http.listOrders(bearerToken)
+        assertEquals(200, response.statusCode())
+
+        val body = mapper.readValue<Map<String, Any>>(response.body())
+        val content = body["content"] as List<*>
+        val orderIds = content.map { (it as Map<*, *>)["id"] as String }
+
+        assertEquals(
+            listOf(
+                inProgress.id.toString(),
+                enqueued.id.toString(),
+                waitingApproval.id.toString(),
+                received.id.toString(),
+            ),
+            orderIds
+        )
     }
 }

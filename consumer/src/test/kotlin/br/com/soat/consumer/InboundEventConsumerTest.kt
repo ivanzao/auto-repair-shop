@@ -97,10 +97,10 @@ class InboundEventConsumerTest {
     @Test
     fun `does not delete a message whose handler failed`() {
         val handler = object : InboundEventHandler {
-            override val eventTypes = setOf(EventType.PARTS_UNAVAILABLE)
+            override val eventTypes = setOf(EventType.SUPPLIES_UNAVAILABLE)
             override fun handle(envelope: EventEnvelope): Unit = throw RuntimeException("boom")
         }
-        val queue = FakeQueue(listOf(Message(envelopeJson(EventType.PARTS_UNAVAILABLE), "rh-4")))
+        val queue = FakeQueue(listOf(Message(envelopeJson(EventType.SUPPLIES_UNAVAILABLE), "rh-4")))
 
         consumer(queue, listOf(handler)).poll()
 

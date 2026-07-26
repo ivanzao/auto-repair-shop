@@ -17,10 +17,6 @@ tags:
     description: "Gerenciamento de clientes"
   - name: Vehicle
     description: "Gerenciamento de veículos"
-  - name: Service
-    description: "Gerenciamento de serviços oferecidos pela oficina"
-  - name: Attendant
-    description: "Gerenciamento de atendentes da oficina (requer role ADMIN)"
 
 paths:
   # ==================== ORDERS ====================
@@ -634,396 +630,6 @@ paths:
         "404":
           description: "Veículo não encontrado"
 
-  # ==================== SERVICES ====================
-  /services:
-    get:
-      tags:
-        - Service
-      summary: "Listar todos os serviços"
-      description: "Retorna a lista de todos os serviços oferecidos pela oficina"
-      operationId: getAllServices
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: "Lista de serviços"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ServiceResponseDTO"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-    post:
-      tags:
-        - Service
-      summary: "Cadastrar novo serviço"
-      description: "Cria um novo serviço oferecido pela oficina"
-      operationId: createService
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateServiceRequestDTO"
-      responses:
-        "201":
-          description: "Serviço criado com sucesso"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceResponseDTO"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /services/{id}:
-    get:
-      tags:
-        - Service
-      summary: "Buscar serviço por ID"
-      description: "Retorna os dados de um serviço específico"
-      operationId: getServiceById
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID do serviço"
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: "Serviço encontrado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceResponseDTO"
-        "400":
-          description: "ID inválido"
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                invalid:
-                  value: "Invalid ID format"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Serviço não encontrado"
-
-    put:
-      tags:
-        - Service
-      summary: "Atualizar serviço"
-      description: "Atualiza os dados de um serviço existente"
-      operationId: updateService
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID do serviço"
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateServiceRequestDTO"
-      responses:
-        "200":
-          description: "Serviço atualizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ServiceResponseDTO"
-        "400":
-          description: "ID inválido"
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                invalid:
-                  value: "Invalid ID format"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Serviço não encontrado"
-
-    delete:
-      tags:
-        - Service
-      summary: "Remover serviço"
-      description: "Remove um serviço do sistema"
-      operationId: deleteService
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID do serviço"
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "204":
-          description: "Serviço removido com sucesso"
-        "400":
-          description: "ID inválido"
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                invalid:
-                  value: "Invalid ID format"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Serviço não encontrado"
-
-  # ==================== ATTENDANTS ====================
-  /attendants:
-    get:
-      tags:
-        - Attendant
-      summary: "Listar atendentes"
-      description: "Retorna lista de atendentes cadastrados (requer role ADMIN)"
-      operationId: getAllAttendants
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: "Lista de atendentes"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AttendantResponseDTO"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Acesso negado (requer ADMIN)"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-    post:
-      tags:
-        - Attendant
-      summary: "Cadastrar novo atendente"
-      description: "Cria um novo atendente no sistema (requer role ADMIN)"
-      operationId: createAttendant
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateAttendantRequestDTO"
-      responses:
-        "201":
-          description: "Atendente criado com sucesso"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AttendantResponseDTO"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Acesso negado (requer ADMIN)"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /attendants/{id}:
-    get:
-      tags:
-        - Attendant
-      summary: "Buscar atendente por ID"
-      description: "Retorna os dados de um atendente específico (requer role ADMIN)"
-      operationId: getAttendantById
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID do atendente"
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: "Atendente encontrado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AttendantResponseDTO"
-        "400":
-          description: "ID inválido"
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                invalid:
-                  value: "Invalid ID format"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Acesso negado (requer ADMIN)"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Atendente não encontrado"
-
-    put:
-      tags:
-        - Attendant
-      summary: "Atualizar atendente"
-      description: "Atualiza os dados de um atendente existente (requer role ADMIN)"
-      operationId: updateAttendant
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID do atendente"
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateAttendantRequestDTO"
-      responses:
-        "200":
-          description: "Atendente atualizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AttendantResponseDTO"
-        "400":
-          description: "ID inválido"
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                invalid:
-                  value: "Invalid ID format"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Acesso negado (requer ADMIN)"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Atendente não encontrado"
-
-    delete:
-      tags:
-        - Attendant
-      summary: "Remover atendente"
-      description: "Remove um atendente do sistema (requer role ADMIN)"
-      operationId: deleteAttendant
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: "ID do atendente"
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "204":
-          description: "Atendente removido com sucesso"
-        "400":
-          description: "ID inválido"
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                invalid:
-                  value: "Invalid ID format"
-        "401":
-          description: "Não autorizado"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: "Acesso negado (requer ADMIN)"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: "Atendente não encontrado"
-
 components:
   securitySchemes:
     bearerAuth:
@@ -1034,7 +640,7 @@ components:
         Autenticação via JWT Bearer Token.
 
         O token é emitido pelo Lambda Authorizer no API Gateway (repositório separado).
-        O app decodifica as claims (`sub` → userId, `role`) sem re-validar a assinatura.
+        O app decodifica as claims (`sub` → userId, `role`, `cpf` → document) sem re-validar a assinatura.
 
         **Formato do header:**
         ```
@@ -1042,14 +648,14 @@ components:
         ```
 
         **Roles disponíveis:**
-        - `ADMIN`: Acesso total a todos os endpoints protegidos (incluindo `/attendants`)
+        - `ADMIN`: Acesso total a todos os endpoints protegidos
         - `ATTENDANT`: Acesso a endpoints de ordens, clientes, veículos, serviços e insumos
 
   schemas:
     # ==================== ORDER DTOs ====================
     CreateOrderRequestDTO:
       type: object
-      description: "Dados para criar uma nova ordem de serviço. O attendantId é extraído automaticamente do JWT pelo servidor."
+      description: "Dados para abrir uma ordem de serviço. Quem abriu vem do JWT (claims sub e cpf), não do corpo. Os itens não vêm daqui: chegam do diagnóstico feito no execution."
       properties:
         customerId:
           type: string
@@ -1061,29 +667,12 @@ components:
           description: "ID do veículo"
         description:
           type: string
-          description: "Descrição do problema/serviço solicitado"
+          description: "Descrição do problema relatado"
           example: "Veículo com barulho no motor ao acelerar"
-        technician:
-          type: string
-          nullable: true
-          description: "Nome do técnico responsável (opcional)"
-        servicesIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: "IDs dos serviços a incluir na ordem"
-        extraSuppliesRequests:
-          type: array
-          items:
-            $ref: "#/components/schemas/SupplyRequirementDTO"
-          description: "Insumos extras necessários além dos serviços (opcional)"
-          default: []
       required:
         - customerId
         - vehicleId
         - description
-        - servicesIds
 
     OrderResponseDTO:
       type: object
@@ -1101,28 +690,35 @@ components:
           $ref: "#/components/schemas/Customer"
         vehicle:
           $ref: "#/components/schemas/Vehicle"
-        attendantId:
-          type: string
-          format: uuid
-          description: "ID do atendente que criou a ordem"
+        openedBy:
+          $ref: "#/components/schemas/User"
+        diagnosedBy:
+          allOf:
+            - $ref: "#/components/schemas/User"
+          nullable: true
+          description: "Mecânico que concluiu o diagnóstico. Nulo enquanto a OS está em RECEIVED."
         description:
           type: string
         services:
           type: array
           items:
-            $ref: "#/components/schemas/Service"
-        technician:
-          type: string
-          nullable: true
+            $ref: "#/components/schemas/QuotedService"
+          description: "Serviços precificados pelo diagnóstico"
+        supplies:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotedSupply"
+          description: "Insumos precificados pelo diagnóstico"
       required:
         - id
         - createdAt
         - status
         - customer
         - vehicle
-        - attendantId
+        - openedBy
         - description
         - services
+        - supplies
 
     OrderStatusResponseDTO:
       type: object
@@ -1201,29 +797,65 @@ components:
       description: "Status possíveis de uma ordem de serviço"
       enum:
         - RECEIVED
-        - IN_DIAGNOSIS
         - WAITING_APPROVAL
-        - APPROVED
-        - REJECTED
+        - EXECUTION_ENQUEUED
         - IN_PROGRESS
-        - CANCELED
         - COMPLETED
         - DELIVERED
+        - CANCELED
 
-    SupplyRequirementDTO:
+    QuotedService:
       type: object
-      description: "Insumo necessário para um serviço"
+      description: "Serviço precificado pelo diagnóstico, snapshot sem vínculo com o catálogo do execution"
       properties:
-        supplyId:
+        id:
           type: string
           format: uuid
+        name:
+          type: string
+        price:
+          type: number
+          format: decimal
+      required:
+        - id
+        - name
+        - price
+
+    QuotedSupply:
+      type: object
+      description: "Insumo precificado pelo diagnóstico, snapshot sem vínculo com o estoque do execution"
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
         quantity:
           type: integer
           format: int32
-          minimum: 1
+        unitPrice:
+          type: number
+          format: decimal
       required:
-        - supplyId
+        - id
+        - name
         - quantity
+        - unitPrice
+
+    User:
+      type: object
+      description: "Identidade extraída do JWT. Não corresponde a nenhuma tabela deste serviço."
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Claim sub do JWT"
+        document:
+          type: string
+          description: "Claim cpf do JWT, apenas dígitos"
+      required:
+        - id
+        - document
 
     # ==================== CUSTOMER DTOs ====================
     CreateCustomerRequestDTO:
@@ -1335,144 +967,6 @@ components:
         - year
         - clientId
 
-    # ==================== SUPPLY DTOs ====================
-    CreateServiceRequestDTO:
-      type: object
-      description: "Dados para cadastrar um serviço"
-      properties:
-        name:
-          type: string
-          description: "Nome do serviço"
-          example: "Troca de óleo"
-        description:
-          type: string
-          nullable: true
-          description: "Descrição detalhada do serviço"
-          example: "Serviço de troca de óleo do motor incluindo filtro"
-        price:
-          type: number
-          format: decimal
-          description: "Preço do serviço"
-          example: 150.00
-        requiredSupplies:
-          type: array
-          items:
-            $ref: "#/components/schemas/SupplyRequirementDTO"
-          description: "Insumos necessários para realizar o serviço"
-      required:
-        - name
-        - price
-
-    ServiceResponseDTO:
-      type: object
-      description: "Dados do serviço"
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        price:
-          type: number
-          format: decimal
-        requiredSupplies:
-          type: array
-          items:
-            $ref: "#/components/schemas/SupplyRequirementDTO"
-      required:
-        - id
-        - name
-        - price
-        - requiredSupplies
-
-    # ==================== ATTENDANT DTOs ====================
-    CreateAttendantRequestDTO:
-      type: object
-      description: "Dados para cadastrar um atendente"
-      properties:
-        name:
-          type: string
-          description: "Nome completo"
-          example: "Carlos Atendente"
-        document:
-          type: string
-          description: "CPF do atendente"
-          example: "111.222.333-44"
-        email:
-          type: string
-          format: email
-          description: "Email do atendente"
-          example: "carlos@autorepair.com"
-        contact:
-          type: string
-          description: "Telefone de contato"
-          example: "(11) 98888-7777"
-      required:
-        - name
-        - document
-        - email
-        - contact
-
-    UpdateAttendantRequestDTO:
-      type: object
-      description: "Dados para atualizar um atendente"
-      properties:
-        name:
-          type: string
-          description: "Nome completo"
-          example: "Carlos Atendente Atualizado"
-        document:
-          type: string
-          description: "CPF do atendente"
-          example: "111.222.333-44"
-        email:
-          type: string
-          format: email
-          description: "Email do atendente"
-          example: "carlos.novo@autorepair.com"
-        contact:
-          type: string
-          description: "Telefone de contato"
-          example: "(11) 98888-7777"
-      required:
-        - name
-        - document
-        - email
-        - contact
-
-    AttendantResponseDTO:
-      type: object
-      description: "Dados do atendente"
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        document:
-          type: string
-        email:
-          type: string
-        contact:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        modifiedAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - name
-        - document
-        - email
-        - contact
-        - createdAt
-        - modifiedAt
-
     # ==================== DOMAIN ENTITIES ====================
     Customer:
       type: object
@@ -1548,58 +1042,6 @@ components:
         - brand
         - model
         - year
-
-    Service:
-      type: object
-      description: "Serviço de uma ordem"
-      properties:
-        id:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
-        modifiedAt:
-          type: string
-          format: date-time
-        version:
-          type: integer
-          format: int32
-          default: 0
-        requiredSupplies:
-          type: array
-          items:
-            $ref: "#/components/schemas/SupplyRequirement"
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        price:
-          type: number
-          format: decimal
-      required:
-        - id
-        - createdAt
-        - modifiedAt
-        - version
-        - requiredSupplies
-        - name
-        - price
-
-    SupplyRequirement:
-      type: object
-      description: "Quantidade de insumo requerido"
-      properties:
-        supplyId:
-          type: string
-          format: uuid
-        quantity:
-          type: integer
-          format: int32
-      required:
-        - supplyId
-        - quantity
 
     # ==================== ERROR RESPONSE ====================
     ErrorResponse:

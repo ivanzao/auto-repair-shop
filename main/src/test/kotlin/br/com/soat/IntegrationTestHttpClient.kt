@@ -7,11 +7,6 @@ import br.com.soat.order.dto.OrderMetricsResponseDTO
 import br.com.soat.order.dto.OrderResponseDTO
 import br.com.soat.order.dto.OrderScheduleVehicleRequestDTO
 import br.com.soat.order.dto.OrderStatusResponseDTO
-import br.com.soat.service.dto.CreateServiceRequestDTO
-import br.com.soat.service.dto.ServiceResponseDTO
-import br.com.soat.attendant.dto.AttendantResponseDTO
-import br.com.soat.attendant.dto.CreateAttendantRequestDTO
-import br.com.soat.attendant.dto.UpdateAttendantRequestDTO
 import br.com.soat.vehicle.dto.CreateVehicleRequestDTO
 import br.com.soat.vehicle.dto.VehicleResponseDTO
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -24,7 +19,6 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.Optional
-import java.util.UUID
 
 class IntegrationTestHttpClient(private val serverPort: Int) {
 
@@ -75,29 +69,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
         return SerializedHttpResponse(response, mapper.readValue(response.body()))
     }
 
-    fun createAttendant(dto: CreateAttendantRequestDTO, authHeaders: Map<String, String>): HttpResponse<AttendantResponseDTO> {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/attendants", body, authHeaders)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
-    }
-
-    fun getAttendant(attendantId: String, authHeaders: Map<String, String>): HttpResponse<String> {
-        return get("/v1/attendants/$attendantId", authHeaders)
-    }
-
-    fun getAllAttendants(authHeaders: Map<String, String>): HttpResponse<String> {
-        return get("/v1/attendants", authHeaders)
-    }
-
-    fun updateAttendant(attendantId: String, dto: UpdateAttendantRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
-        val body = mapper.writeValueAsString(dto)
-        return put("/v1/attendants/$attendantId", body, authHeaders)
-    }
-
-    fun deleteAttendant(attendantId: String, authHeaders: Map<String, String>): HttpResponse<String> {
-        return delete("/v1/attendants/$attendantId", authHeaders)
-    }
-
     fun createCustomer(dto: CreateCustomerRequestDTO, authHeaders: Map<String, String>): HttpResponse<CustomerResponseDTO> {
         val body = mapper.writeValueAsString(dto)
         val response = post("/v1/customers", body, authHeaders)
@@ -134,29 +105,6 @@ class IntegrationTestHttpClient(private val serverPort: Int) {
 
     fun deleteVehicle(vehicleId: String, authHeaders: Map<String, String>): HttpResponse<String> {
         return delete("/v1/vehicles/$vehicleId", authHeaders)
-    }
-
-    fun createService(dto: CreateServiceRequestDTO, authHeaders: Map<String, String>): HttpResponse<ServiceResponseDTO> {
-        val body = mapper.writeValueAsString(dto)
-        val response = post("/v1/services", body, authHeaders)
-        return SerializedHttpResponse(response, mapper.readValue(response.body()))
-    }
-
-    fun getService(serviceId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
-        return get("/v1/services/$serviceId", authHeaders)
-    }
-
-    fun getAllServices(authHeaders: Map<String, String>): HttpResponse<String> {
-        return get("/v1/services", authHeaders)
-    }
-
-    fun updateService(serviceId: UUID, dto: CreateServiceRequestDTO, authHeaders: Map<String, String>): HttpResponse<String> {
-        val body = mapper.writeValueAsString(dto)
-        return put("/v1/services/$serviceId", body, authHeaders)
-    }
-
-    fun deleteService(serviceId: UUID, authHeaders: Map<String, String>): HttpResponse<String> {
-        return delete("/v1/services/$serviceId", authHeaders)
     }
 
     private fun post(path: String, body: String, authHeaders: Map<String, String> = emptyMap()): HttpResponse<String> {

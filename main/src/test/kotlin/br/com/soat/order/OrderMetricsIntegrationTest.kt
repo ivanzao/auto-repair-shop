@@ -1,12 +1,12 @@
 package br.com.soat.order
 
 import br.com.soat.IntegrationTest
-import br.com.soat.attendant.createAttendant
 import br.com.soat.customer.createCustomer
 import br.com.soat.order.model.Order
 import br.com.soat.order.model.OrderExecutionMetric
 import br.com.soat.order.repository.OrderExecutionMetricRepository
 import br.com.soat.order.repository.OrderRepository
+import br.com.soat.shared.model.User
 import br.com.soat.shared.vo.Document
 import br.com.soat.shared.vo.Email
 import br.com.soat.shared.vo.VehiclePlate
@@ -114,13 +114,8 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
 
     private fun createOrderInDatabase(): UUID {
         val count = counter.incrementAndGet()
-        val attendantDoc = count.toString().padStart(11, '0')
         val customerCpf = (count + 1000).toString().padStart(11, '0')
 
-        val attendant = createAttendant(
-            document = attendantDoc,
-            email = "attendant$count@test.com"
-        )
         val customer = createCustomer(
             document = Document(customerCpf),
             email = Email("customer$count@test.com")
@@ -132,7 +127,7 @@ class OrderMetricsIntegrationTest : IntegrationTest() {
             Order(
                 customer = customer,
                 vehicle = vehicle,
-                attendantId = attendant.id,
+                openedBy = User(UUID.randomUUID(), "12345678909"),
                 description = "Test order for metrics"
             )
         )

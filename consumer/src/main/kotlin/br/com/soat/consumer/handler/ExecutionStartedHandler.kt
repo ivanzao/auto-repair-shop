@@ -5,13 +5,13 @@ import br.com.soat.consumer.EventType
 import br.com.soat.consumer.InboundEventHandler
 import br.com.soat.order.OrderListenerUseCase
 
-class ExecutionProgressHandler(
+class ExecutionStartedHandler(
     private val orderListenerUseCase: OrderListenerUseCase,
 ) : InboundEventHandler {
 
-    override val eventTypes = setOf(EventType.EXECUTION_STARTED, EventType.DIAGNOSE_FINISHED)
+    override val eventTypes = setOf(EventType.EXECUTION_STARTED)
 
     override fun handle(envelope: EventEnvelope) {
-        orderListenerUseCase.recordExecutionProgress(envelope.orderId(), envelope.eventType)
+        orderListenerUseCase.startExecution(envelope.orderId(), envelope.eventId)
     }
 }

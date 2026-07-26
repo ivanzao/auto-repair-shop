@@ -3,9 +3,9 @@ package br.com.soat.order
 import br.com.soat.customer.Customers
 import br.com.soat.customer.toCustomer
 import br.com.soat.order.model.Order
-import br.com.soat.service.Services
-import br.com.soat.service.model.Service
-import br.com.soat.shared.model.SupplyRequirement
+import br.com.soat.order.model.QuotedService
+import br.com.soat.order.model.QuotedSupply
+import br.com.soat.shared.model.User
 import br.com.soat.vehicle.Vehicles
 import br.com.soat.vehicle.toVehicle
 import kotlinx.datetime.toJavaLocalDateTime
@@ -21,30 +21,38 @@ object Orders : Table() {
 
     val customerId = uuid("customer_id").references(Customers.id)
     val vehicleId = uuid("vehicle_id").references(Vehicles.id)
-    val attendantId = uuid("attendant_id")
+
+    val openedById = uuid("opened_by_id")
+    val openedByDocument = varchar("opened_by_document", 20)
+
+    val diagnosedById = uuid("diagnosed_by_id").nullable()
+    val diagnosedByDocument = varchar("diagnosed_by_document", 20).nullable()
 
     val status = varchar("status", 50)
     val description = text("description")
-    val technician = varchar("technician", 255).nullable()
 
     init {
         PrimaryKey(id)
     }
 }
 
-object OrderServices : Table("order_services") {
+object OrderQuotedServices : Table("order_quoted_services") {
     val orderId = uuid("order_id").references(Orders.id)
-    val serviceId = uuid("service_id").references(Services.id)
+    val serviceId = uuid("service_id")
+    val name = varchar("name", 255)
+    val price = decimal("price", 10, 2)
 
     init {
         PrimaryKey(orderId, serviceId)
     }
 }
 
-object OrderSupplies : Table("order_supplies") {
+object OrderQuotedSupplies : Table("order_quoted_supplies") {
     val orderId = uuid("order_id").references(Orders.id)
     val supplyId = uuid("supply_id")
+    val name = varchar("name", 255)
     val quantity = integer("quantity")
+    val unitPrice = decimal("unit_price", 10, 2)
 
     init {
         PrimaryKey(orderId, supplyId)
@@ -52,8 +60,8 @@ object OrderSupplies : Table("order_supplies") {
 }
 
 fun ResultRow.toOrder(
-    services: List<Service>,
-    parts: List<SupplyRequirement>
+    services: List<QuotedService>,
+    supplies: List<QuotedSupply>,
 ) = Order(
     id = this[Orders.id],
     createdAt = this[Orders.createdAt].toJavaLocalDateTime(),
@@ -62,9 +70,9 @@ fun ResultRow.toOrder(
     version = this[Orders.version],
     customer = this.toCustomer(),
     vehicle = this.toVehicle(),
-    attendantId = this[Orders.attendantId],
+    openedBy = User(this[Orders.openedById], this[Orders.openedByDocument]),
+    diagnosedBy = this[Orders.diagnosedById]?.let { User(it, this[Orders.diagnosedByDocument].orEmpty()) },
     services = services,
-    extraSupplies = parts,
+    supplies = supplies,
     description = this[Orders.description],
-    technician = this[Orders.technician]
 )

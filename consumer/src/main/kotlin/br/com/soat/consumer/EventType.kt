@@ -5,10 +5,10 @@ object EventType {
     const val QUOTE_REJECTED = "QuoteRejected"
     const val PAYMENT_FAILED = "PaymentFailed"
 
-    const val EXECUTION_STARTED = "ExecutionStarted"
     const val DIAGNOSE_FINISHED = "DiagnoseFinished"
+    const val EXECUTION_STARTED = "ExecutionStarted"
     const val EXECUTION_FINISHED = "ExecutionFinished"
-    const val PARTS_UNAVAILABLE = "PartsUnavailable"
+    const val SUPPLIES_UNAVAILABLE = "SuppliesUnavailable"
     const val EXECUTION_FAILED = "ExecutionFailed"
     const val RESERVATION_EXPIRED = "ReservationExpired"
 }
