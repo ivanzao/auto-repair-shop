@@ -1,53 +1,36 @@
-# Auto Repair Shop
+# auto-repair-shop
 
-Sistema de gerenciamento para oficina mecanica desenvolvido em Kotlin com arquitetura hexagonal (ports & adapters) multi-modulo.
-
----
-
-## Estrutura de Pastas
-
-```
-auto-repair-shop/
-├── main/                  # Aplicacao principal (entry point, DI)
-├── domain/                # Logica de negocio (modelos, use cases, ports)
-├── api/                   # REST API (Ktor routes, DTOs)
-├── storage/               # Persistencia (Exposed, Flyway migrations)
-├── worker/                # Background jobs (outbox → SNS relay, consumidor SQS de entrada, schedulers)
-├── infra/
-│   ├── k8s/               # Kustomize (base/ + overlays/{hml,prod}/)
-│   └── load-test/         # Teste de carga (K6)
-├── .github/workflows/     # CI/CD Pipeline
-├── Dockerfile             # Multi-stage build (JDK + JRE)
-├── docker-compose.yaml    # Orquestracao local (app + PostgreSQL)
-└── build.gradle.kts       # Build principal
-```
-
-> **Infraestrutura AWS e plataforma K8s** (VPC, EKS, RDS, ALB Controller, Prometheus Operator, OTel Operator, Alloy/Loki/Tempo, ServiceAccount IRSA, Namespace) vivem no repositório separado [`auto-repair-shop-infra`](../auto-repair-shop-infra/). Este repo só carrega manifestos app-específicos (Deployment, Service, ConfigMap, HPA, ServiceMonitor) via Kustomize. O contrato com o infra é por **convenções K8s** (nomes de namespace/SA, CRDs do OTel Operator e Prometheus Operator) — sem referência direta a recursos AWS.
+Microsserviço **order** do Auto Repair Shop: dono do ciclo de vida da ordem de serviço, do
+cliente e do veículo. É o read model da saga: não conhece catálogo nem preço, e grava como
+snapshot os itens já precificados que chegam do execution. Kotlin com arquitetura hexagonal
+multi-módulo sobre PostgreSQL.
 
 ---
 
 ## Arquitetura
 
-### Authentication
+### Autenticação
 
-O app **não valida assinatura JWT** nem armazena credenciais. Toda autenticação é delegada ao **API Gateway + Lambda Authorizer** (em outro repo). O app recebe o `Authorization: Bearer <jwt>` já validado pelo API Gateway, decodifica as claims (`sub` → `userId`, `role`) e confia.
+O app **não valida assinatura JWT** nem armazena credenciais. Toda autenticação é delegada ao **API Gateway + Lambda Authorizer**. O app recebe o `Authorization: Bearer <jwt>` já validado, decodifica as claims (`sub`, `role`, `cpf`) e confia.
 
 - Rotas protegidas usam `authenticate("admin")` ou `authenticate("attendant")` (Ktor) com `JwtBearerAuthenticationProvider`.
 - Sem `Authorization: Bearer <jwt>` → `401 Unauthorized`.
 - Role inválida para o endpoint → `403 Forbidden`.
 
-### Order service na Fase 4 (fluxo coreografado por eventos)
+### Fluxo coreografado por eventos
 
-Na Fase 4 o monólito virou o **order service**. Ele é dono da OS, do cliente e do veículo; **catálogo de serviços, estoque de insumos, reservas e diagnóstico** foram para o *execution* e **orçamento/pagamento** para o *billing*. O order não tem orquestrador central: **o estado da saga é derivado do status da OS**, movido por eventos. Ele é o read model da saga — não conhece catálogo nem preço, e recebe os itens já precificados.
+O order é dono da OS, do cliente e do veículo. Catálogo de serviços, estoque de insumos,
+reservas e diagnóstico ficam no *execution*; orçamento e pagamento, no *billing*. Não há
+orquestrador central: o estado da saga é derivado do status da OS, movido por eventos.
 
-Identidade não passa por banco: quem abriu a OS vem do JWT (`sub` e `cpf`) e é gravado como `openedBy`; quem diagnosticou chega no payload do `DiagnoseFinished` e é gravado como `diagnosedBy`, nulo enquanto a OS espera diagnóstico. Não existe tabela de atendentes — os dois são referências a usuários de outro domínio, sem chave estrangeira.
+Identidade não passa por banco: quem abriu a OS vem do JWT (`sub` e `cpf`) e é gravado como `openedBy`; quem diagnosticou chega no payload do `DiagnoseFinished` e é gravado como `diagnosedBy`, nulo enquanto a OS espera diagnóstico. Não existe tabela de atendentes; os dois são referências a usuários de outro domínio, sem chave estrangeira.
 
 - **Produz** `OrderCreated` ao abrir a OS (fino: cliente e veículo, sem itens) e `OrderAwaitingApproval` quando o diagnóstico chega precificado.
 - **Consome** de billing (`PaymentConfirmed`, `QuoteRejected`, `PaymentFailed`) e de execution (`DiagnoseFinished`, `ExecutionStarted`, `ExecutionFinished`, `SuppliesUnavailable`, `ExecutionFailed`, `ReservationExpired`).
 
-**Saída (outbox → SNS):** `OrderCreated` e `OrderAwaitingApproval` são gravados na tabela `events` (outbox) na mesma transação que muda a OS. Um scheduler (`OutboxRelayTask` → `OutboxRelay`) publica o envelope no tópico `order-events` com o message attribute `eventType` (camelCase) + `traceparent`.
+**Saída (outbox → SNS):** `OrderCreated` e `OrderAwaitingApproval` são gravados na tabela `events` (outbox) na mesma transação que muda a OS. Um scheduler (`OutboxRelayTask` → `OutboxRelay`) publica o envelope no tópico `auto-repair-shop-order-events-{env}` com os message attributes `eventType` (camelCase) e `traceparent`.
 
-**Entrada (SQS → dispatch):** o `InboundEventConsumer` faz long-poll da fila de entrada, desserializa o envelope e despacha por `eventType` para os `InboundEventHandler`s. A fila recebe um superset (mesh): `eventType` sem handler é ignorado e a mensagem é apagada. Idempotência por `eventId` na tabela `idempotencies`.
+**Entrada (SQS → dispatch):** o `InboundEventConsumer` faz long-poll da fila `auto-repair-shop-order-queue-{env}`, desserializa o envelope e despacha por `eventType` para os `InboundEventHandler`s. A fila recebe um superset (mesh): `eventType` sem handler é ignorado e a mensagem é apagada. Idempotência por `eventId` na tabela `idempotency`.
 
 ```
 [OrderUseCase.create] ──▶ [events (outbox)] ──(OutboxRelayTask)──▶ [OutboxRelay] ──▶ SNS order-events
@@ -55,7 +38,7 @@ Identidade não passa por banco: quem abriu a OS vem do JWT (`sub` e `cpf`) e é
 SQS (fila de entrada) ──(InboundEventConsumer)──▶ InboundEventHandler ──▶ OrderListenerUseCase
 ```
 
-**Status derivado:** `RECEIVED → WAITING_APPROVAL → EXECUTION_ENQUEUED → IN_PROGRESS → COMPLETED → DELIVERED`, mais `CANCELED` a partir de qualquer estado não terminal. `RECEIVED` significa "aguardando diagnóstico" — não existe estado de diagnóstico em curso, porque o mecânico pega a OS da fila e conclui o diagnóstico numa chamada só.
+**Status derivado:** `RECEIVED → WAITING_APPROVAL → EXECUTION_ENQUEUED → IN_PROGRESS → COMPLETED → DELIVERED`, mais `CANCELED` a partir de qualquer estado não terminal. `RECEIVED` significa "aguardando diagnóstico". Não existe estado de diagnóstico em curso, porque o mecânico pega a OS da fila e conclui o diagnóstico numa chamada só.
 
 | Evento consumido | Efeito no status da OS |
 |---|---|
@@ -70,12 +53,39 @@ Todas as transições são idempotentes (evento repetido ou fora de ordem vira n
 
 O order usa `EXECUTION_ENQUEUED` onde o execution usa `ENQUEUED` para o mesmo instante. É deliberado: o nome do status da OS diz **o que** está enfileirado.
 
-### Observability
+Contrato completo dos eventos: `auto-repair-shop-infra/docs/saga-event-contract.md`.
 
-- **Metrics**: Micrometer + Prometheus em `/metrics`. ServiceMonitor (Prometheus Operator instalado pelo infra) faz scrape a cada 30s.
-- **Logs**: JSON estruturado via logstash-logback-encoder. Inclui `traceId`/`spanId`/`requestId` do MDC. O Alloy daemonset (instalado pelo infra) coleta e manda pro Loki.
-- **Tracing**: auto-injetado pelo OpenTelemetry Operator (instalado pelo infra). O Deployment do app traz a annotation `instrumentation.opentelemetry.io/inject-java: "true"` que ativa o injection do agent Java. Traces vão pro Tempo via Alloy.
-- **Counters de negócio**, nomes como saem no `/metrics`: `orders_total`, `orders_by_status_total{status}`, `order_inbound_events_total`. O meter de criação se chama `orders_created_total` no código, mas `_created` é sufixo reservado do OpenMetrics e é removido no scrape — as queries do Grafana usam `orders_total`.
+### Observabilidade
+
+- **Métricas**: Micrometer + Prometheus em `/metrics`. ServiceMonitor faz scrape a cada 30s.
+- **Logs**: JSON estruturado via logstash-logback-encoder, com `traceId`/`spanId`/`requestId` do MDC. O Alloy daemonset coleta e envia ao Loki.
+- **Tracing**: auto-injetado pelo OpenTelemetry Operator. O Deployment traz a annotation `instrumentation.opentelemetry.io/inject-java: "true"`. Traces vão ao Tempo via Alloy.
+- **Counters de negócio**, como saem no `/metrics`: `orders_total`, `orders_by_status_total{status}`, `order_inbound_events_total`. O meter de criação se chama `orders_created_total` no código, mas `_created` é sufixo reservado do OpenMetrics e é removido no scrape, então as queries do Grafana usam `orders_total`.
+
+---
+
+## Estrutura de Pastas
+
+```
+auto-repair-shop/
+├── main/                  # Aplicação principal (entry point, DI)
+├── domain/                # Lógica de negócio (modelos, use cases, ports)
+├── api/                   # REST API (Ktor routes, DTOs)
+├── storage/               # Persistência (Exposed, Flyway migrations)
+├── consumer/              # Consumidor SQS e handlers de evento
+├── producer/              # Outbox → SNS
+├── worker/                # Schedulers (relay do outbox)
+├── metric/                # Micrometer
+├── infra/
+│   ├── k8s/               # Kustomize (base/ + overlays/{hml,prod}/)
+│   └── load-test/         # Teste de carga (K6)
+├── .github/workflows/     # CI/CD
+├── Dockerfile             # Multi-stage build (JDK + JRE)
+├── docker-compose.yaml    # Orquestração local (app + PostgreSQL)
+└── build.gradle.kts
+```
+
+> **Infraestrutura AWS e plataforma K8s** (VPC, EKS, RDS, Prometheus Operator, OTel Operator, Alloy/Loki/Tempo, ServiceAccount, Namespace) vivem em [`auto-repair-shop-infra`](https://github.com/ivanzao/auto-repair-shop-infra). Este repo só carrega manifestos app-específicos (Deployment, Service, ConfigMap, HPA, ServiceMonitor) via Kustomize.
 
 ---
 
@@ -90,16 +100,16 @@ O order usa `EXECUTION_ENQUEUED` onde o execution usa `ENQUEUED` para o mesmo in
 - **ORM**: Exposed 0.61.0
 - **Migrations**: Flyway
 - **Messaging**: AWS SDK for Kotlin (SNS + SQS)
-- **Observability**: Micrometer Prometheus, logstash-logback-encoder
+- **Observabilidade**: Micrometer Prometheus, logstash-logback-encoder
 - **Testing**: JUnit 5, MockK, TestContainers, Cucumber (BDD)
-- **Quality**: JaCoCo, SonarQube
+- **Qualidade**: JaCoCo, SonarCloud
 - **Infra (app-side)**: Docker, Kustomize, GitHub Actions
 
 ---
 
-## Execucao Local
+## Execução Local
 
-### Opcao 1: Docker Compose (Recomendado)
+### Opção 1: Docker Compose (recomendado)
 
 ```bash
 ./gradlew :main:shadowJar
@@ -113,7 +123,7 @@ Acesse:
 - Health: http://localhost:8080/health
 - Metrics: http://localhost:8080/metrics
 
-### Opcao 2: Execucao Local (sem Docker)
+### Opção 2: Sem Docker
 
 ```bash
 ./gradlew build
@@ -132,43 +142,31 @@ Username: app     Password: test
 ## Testes
 
 ```bash
-./gradlew test                    # Unitarios
-./gradlew integrationTest         # Requer Docker (TestContainers Postgres + LocalStack SNS/SQS)
-./gradlew bddTest                 # Fluxo BDD (Cucumber) ponta-a-ponta; requer Docker
-./gradlew jacocoAggregatedReport  # Relatorio em build/reports/jacoco/...
+./gradlew test                    # unitários
+./gradlew integrationTest         # requer Docker (TestContainers Postgres + LocalStack SNS/SQS)
+./gradlew bddTest                 # fluxo BDD (Cucumber) ponta a ponta; requer Docker
+./gradlew jacocoAggregatedReport  # relatório em build/reports/jacoco/...
 ```
 
-O `bddTest` cobre o fluxo completo (criação → OrderCreated → diagnóstico → OrderAwaitingApproval → pagamento → execução → conclusão) e cenários de compensação (`SuppliesUnavailable` e `QuoteRejected` → `CANCELED`), com billing/execution simulados por eventos na fila do LocalStack (`main/src/test/resources/features/order_flow.feature`).
+O `bddTest` cobre o fluxo completo (criação → `OrderCreated` → diagnóstico → `OrderAwaitingApproval` → pagamento → execução → conclusão) e cenários de compensação (`SuppliesUnavailable` e `QuoteRejected` → `CANCELED`), com billing e execution simulados por eventos na fila do LocalStack (`main/src/test/resources/features/order_flow.feature`).
 
 ### Cobertura
 
-| Métrica | Valor |
-|---|---|
-| Cobertura (SonarCloud) | **80.9%** |
-| Testes | 91 |
-| Quality gate | Passed |
+![Cobertura no SonarCloud](docs/img/sonarcloud-coverage.png)
 
-Análise a cada PR pelo step `Sonar` do `pr-check.yaml`, no projeto `auto-repair-shop`
-da organização `ivanzao` no SonarCloud. O quality gate exige 80% de cobertura em
-código novo.
+Análise a cada PR pelo step `Sonar` do `pr-check.yaml`, no projeto `auto-repair-shop` da
+organização `ivanzao`. O quality gate exige 80% de cobertura em código novo.
 
-Ficam fora da contagem de cobertura o wiring de framework (`config`, `auth`,
-`metric`), o módulo `main` e os DTOs — código sem lógica de negócio própria. Eles
-seguem analisados para bugs, code smells e security hotspots.
+Ficam fora da contagem o wiring de framework (`config`, `auth`, `metric`), o módulo `main` e os
+DTOs, código sem lógica de negócio própria, ainda analisado para bugs e code smells.
 
 Para reproduzir localmente:
 
 ```bash
 ./gradlew test integrationTest bddTest jacocoAggregatedReport
-# relatório HTML em build/reports/jacoco/jacocoAggregatedReport/html/index.html
 ```
 
-<!-- TODO: print do dashboard do SonarCloud (projeto é privado, link exige login) -->
-
-
----
-
-## Load Test (K6)
+### Load Test (K6)
 
 ```bash
 k6 run --env K6_BASE_URL=<API_GW_URL> infra/load-test/k6-stress-test.js
@@ -176,69 +174,73 @@ k6 run --env K6_BASE_URL=<API_GW_URL> infra/load-test/k6-stress-test.js
 
 ---
 
-## Deploy em Kubernetes (Kustomize)
+## API
+
+- **Base path**: `/v1`
+- **Swagger UI**: `/swagger` (execução local)
+- **Spec**: `api/src/main/resources/openapi/documentation.yaml`
+- **Health**: `/health` · **Metrics**: `/metrics`
+- **Autenticação**: `Authorization: Bearer <jwt>`, validado pelo Lambda Authorizer no API Gateway
+- **Identidade**: `openedBy` vem do JWT de quem abriu a OS; `diagnosedBy` chega no payload do
+  `DiagnoseFinished`. Não há tabela de atendentes neste serviço.
+
+---
+
+## Deploy em Kubernetes
 
 ```
 infra/k8s/
 ├── base/
 │   ├── deployment.yaml         # Container, probes, envFrom
-│   ├── service.yaml            # NLB privado (interno)
-│   ├── configmap.yaml          # SERVER_PORT, etc.
-│   ├── hpa.yaml                # CPU 70% (min/max definidos no overlay)
+│   ├── service.yaml            # NodePort (valor vem do SSM)
+│   ├── configmap.yaml
+│   ├── hpa.yaml                # CPU 70% (min/max no overlay)
 │   ├── servicemonitor.yaml     # Prometheus scrape de /metrics
 │   └── kustomization.yaml
 └── overlays/
-    ├── hml/{kustomization,deployment-patch,configmap-patch}.yaml
-    └── prod/{kustomization,deployment-patch,configmap-patch}.yaml
+    ├── hml/{kustomization,deployment-patch,configmap-patch,nodeport-patch}.yaml
+    └── prod/{kustomization,deployment-patch,configmap-patch,nodeport-patch}.yaml
 ```
 
-### Aplicar manualmente
+Aplicar manualmente:
 
 ```bash
-kubectl kustomize infra/k8s/overlays/hml | kubectl apply -f -
+kubectl apply -k infra/k8s/overlays/hml
 ```
 
-### Valores dinâmicos por env
-
-O CI lê os params do SSM, busca credenciais do DB no Secrets Manager (JSON com host/port/dbname/username/password) e patcheia o ConfigMap antes do apply:
+O CI lê os params do SSM, busca as credenciais do banco no Secrets Manager e reescreve o ConfigMap antes do apply:
 
 | Param SSM | Conteúdo | Uso |
 |-----------|----------|-----|
 | `/auto-repair-shop/{env}/eks/cluster-name` | nome do cluster EKS | `aws eks update-kubeconfig` |
-| `/auto-repair-shop/{env}/db/secret-arn` | ARN do Secrets Manager com credenciais do app | `aws secretsmanager get-secret-value` → JSON com host, port, dbname, username, password |
+| `/auto-repair-shop/{env}/order/db/secret-arn` | ARN do Secrets Manager com as credenciais do app | `aws secretsmanager get-secret-value` → JSON com host, port, dbname, username, password |
 | `/auto-repair-shop/{env}/sns/order-events-topic-arn` | ARN do tópico de eventos do order | `SNS_TOPIC_ARN` no ConfigMap |
-| `/auto-repair-shop/{env}/sqs/order-saga-queue-url` | URL da fila de entrada do order | `SQS_QUEUE_URL` no ConfigMap |
+| `/auto-repair-shop/{env}/sqs/order-queue-url` | URL da fila de entrada do order | `SQS_QUEUE_URL` no ConfigMap |
+| `/auto-repair-shop/{env}/order/node-port` | NodePort do Service | patch do `nodeport-patch.yaml` |
 | `/auto-repair-shop/{env}/apigw/endpoint` | endpoint do API Gateway | smoke test pós-deploy |
 
-Todos os params são **obrigatórios** — se algum não existir, o deploy falha no step de leitura SSM. Cluster e DB são publicados em `hml/ssm.tf`/`prod/ssm.tf`; tópico e fila do order vêm do `modules/messaging` (Plano 1 do `auto-repair-shop-infra`); APIGW vem do módulo de gateway.
+Todos os params são **obrigatórios**: se algum não existir, o deploy falha no step de leitura do SSM.
 
 ---
 
-## CI/CD Pipeline
+## CI/CD
 
 | Workflow | Trigger | Jobs |
 |----------|---------|------|
-| `pr-check.yaml` | PRs para `main`/`develop` | Unit + integration tests + Kustomize lint |
-| `build-and-deploy.yaml` | Push `main` (prod) ou `develop` (hml) | Test → Build (Docker → GHCR) → Deploy (Kustomize + SSM) |
+| `pr-check.yaml` | PR para `main` | unit + integration + BDD + Sonar |
+| `build-and-deploy.yaml` | push em `main` | Test → Build (Docker → GHCR) → deploy hml → deploy prod |
 
-### Secrets necessarios no GitHub
+O deploy de produção usa GitHub Environment com `required_reviewers`: o job fica pendente até
+aprovação manual.
 
-| Secret | Descricao |
+### Secrets necessários
+
+| Secret | Descrição |
 |--------|-----------|
 | `AWS_ACCESS_KEY_ID` | Chave de acesso AWS |
 | `AWS_SECRET_ACCESS_KEY` | Chave secreta AWS |
-| `AWS_SESSION_TOKEN` | Token de sessao AWS |
-| `GHCR_PAT` | Personal Access Token para GHCR |
+| `AWS_SESSION_TOKEN` | Token de sessão AWS |
+| `GHCR_PAT` / `GHCR_TOKEN` | Personal Access Token para o GHCR |
+| `SONAR_TOKEN` | Token do SonarCloud |
 
-Tudo mais (DB endpoint, SNS ARN, API GW endpoint) vem do SSM. A senha do DB vem do Secrets Manager (ARN lido do SSM).
-
----
-
-## API
-
-- **Base path**: `/v1`
-- **Swagger UI**: [`/swagger`](http://localhost:8080/swagger)
-- **Health check**: `/health`
-- **Metrics**: `/metrics`
-- **Autenticacao**: `Authorization: Bearer <jwt>` (validado pelo Lambda Authorizer no API Gateway; app decoda claims sem re-validar assinatura)
-- **Attendants**: gerenciamento via `/v1/attendants` (CRUD restrito a `ADMIN`); provisionamento de credenciais é responsabilidade do Lambda/Cognito
+Todo o resto (endpoint do banco, ARN do SNS, endpoint do API Gateway) vem do SSM. A senha do banco vem do Secrets Manager, com o ARN lido do SSM.
